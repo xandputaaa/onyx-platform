@@ -248,7 +248,7 @@ def create_crash_woods_cinema():
     video_file=OUT/"orni_crash_woods_15s.mp4"
     set_job_status(stage="Encoding MP4 with FFmpeg", progress=92)
     try:
-        subprocess.run(["ffmpeg","-y","-framerate","12","-i",str(frames_dir/"frame_%04d.png"),"-c:v","libx264","-pix_fmt","yuv420p","-crf","21","-preset","ultrafast","-movflags","+faststart",str(video_file)],check=True,capture_output=True,text=True,timeout=480)
+        subprocess.run(["ffmpeg","-y","-framerate","12","-i",str(frames_dir/"frame_%04d.png"),"-vf","scale=iw*3:ih*3:flags=neighbor","-c:v","libx264","-pix_fmt","yuv420p","-crf","21","-preset","ultrafast","-movflags","+faststart",str(video_file)],check=True,capture_output=True,text=True,timeout=480)
     except FileNotFoundError: raise RuntimeError("FFmpeg is not installed in the Blender worker.")
     except subprocess.CalledProcessError as exc: raise RuntimeError("FFmpeg encoding failed: "+(exc.stderr or "unknown error")[-1200:])
     finally: shutil.rmtree(frames_dir,ignore_errors=True)
@@ -379,7 +379,7 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
     try:
         subprocess.run(
             ["ffmpeg","-y","-framerate",str(scene.render.fps),"-i",str(frames_dir/"frame_%04d.png"),
-             "-c:v","libx264","-pix_fmt","yuv420p","-crf","20","-preset","veryfast",
+             "-vf","scale=iw*3:ih*3:flags=neighbor","-c:v","libx264","-pix_fmt","yuv420p","-crf","20","-preset","veryfast",
              "-movflags","+faststart",str(video_file)],
             check=True,capture_output=True,text=True,timeout=180
         )
