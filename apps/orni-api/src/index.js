@@ -81,7 +81,7 @@ app.get("/health", (_req, res) => {
 app.get("/ready", (_req, res) => {
   const missing = [];
   if (!process.env.ORNI_ACCESS_TOKEN) missing.push("ORNI_ACCESS_TOKEN");
-  if (!process.env.OPENAI_API_KEY) missing.push("OPENAI_API_KEY");
+  if (!process.env.GROQ_API_KEY) missing.push("GROQ_API_KEY");
   const ready = missing.length === 0;
   res.status(ready ? 200 : 503).json({
     ok: ready,
@@ -134,7 +134,7 @@ app.get("/api/orni/status", (_req, res) => {
     domain: "CELVANI",
     status: "foundation",
     capabilities: {
-      authenticatedMissionEndpoint: Boolean(process.env.ORNI_ACCESS_TOKEN && process.env.OPENAI_API_KEY),
+      authenticatedMissionEndpoint: Boolean(process.env.ORNI_ACCESS_TOKEN && process.env.GROQ_API_KEY),
       celvaniIntelligence: "model-assisted analysis; live research integration not connected",
       creativeStudio: "planned",
       blenderAutomation: "planned",
@@ -144,7 +144,9 @@ app.get("/api/orni/status", (_req, res) => {
     },
     configuration: {
       agentTokenConfigured: Boolean(process.env.ORNI_ACCESS_TOKEN),
-      modelProviderConfigured: Boolean(process.env.OPENAI_API_KEY),
+      modelProviderConfigured: Boolean(process.env.GROQ_API_KEY),
+      modelProvider: "Groq",
+      model: process.env.ORNI_MODEL || "qwen/qwen3.8-27b",
       onyxOriginConfigured: Boolean(allowedOrigin)
     },
     note: "A configured provider enables model-assisted analysis only; external integrations remain separate."
@@ -181,30 +183,32 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
   const missionId = randomUUID();
   if (!mission) return res.status(400).json({ error: "mission is required" });
   if (mission.length > 6000) return res.status(413).json({ error: "mission must be 6000 characters or fewer" });
-  if (!process.env.OPENAI_API_KEY) {
-    return res.status(503).json({ error: "Model provider is not configured", required: ["OPENAI_API_KEY"] });
+  if (!process.env.GROQ_API_KEY) {
+    return res.status(503).json({ error: "Groq model provider is not configured", required: ["GROQ_API_KEY"] });
   }
 
-  const model = process.env.ORNI_MODEL || "gpt-4.1-mini";
+  const model = process.env.ORNI_MODEL || "qwen/qwen3.8-27b";
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45000);
 
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
         model,
-        instructions: orniSystemPrompt,
-        input: mission,
-        max_output_tokens: 1800,
-        store: false,
-        text: {
-          format: {
-            type: "json_schema",
+        messages: [
+          { role: "system", content: orniSystemPrompt + "\\nReturn one JSON object matching the ORNI mission report schema. Do not include markdown fences or commentary." },
+          { role: "user", content: mission }
+        ],
+        max_completion_tokens: 1800,
+        temperature: 0.3,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
             name: "orni_mission_report",
             strict: true,
             schema: missionReportSchema
@@ -237,25 +241,13 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
       });
     }
 
-    const output = payload.output_text || (payload.output || [])
-      .flatMap(item => item.content || [])
-      .filter(item => item.type === "output_text")
-      .map(item => item.text)
-      .join("\\n");
-
-    if (payload.status === "incomplete") {
-      return res.status(502).json({
-        error: "ORNI report was incomplete",
-        reason: payload.incomplete_details?.reason || "unknown"
-      });
-    }
+    const output = payload.choices?.[0]?.message?.content || "";
 
     if (!output) {
-      const refusal = (payload.output || [])
-        .flatMap(item => item.content || [])
-        .find(item => item.type === "refusal");
+      const finishReason = payload.choices?.[0]?.finish_reason || "unknown";
       return res.status(502).json({
-        error: refusal?.refusal || "ORNI received an empty model response"
+        error: "ORNI received an empty Groq model response",
+        finishReason
       });
     }
 
@@ -271,6 +263,7 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
       domain: "CELVANI",
       missionId,
       requestId,
+      provider: "groq",
       model,
       report,
       approvalRequired: report.approvalRequired,
