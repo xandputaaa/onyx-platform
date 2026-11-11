@@ -10,7 +10,7 @@ const orniBase = (process.env.ORNI_BASE_URL || "https://orni-api-production.up.r
 
 app.disable("x-powered-by");
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(express.json({ limit: "32kb" }));
+app.use(express.json({ limit: "24mb" }));
 app.use(express.static(path.join(here, "../public"), { extensions: ["html"] }));
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "onyx-web" }));
@@ -61,6 +61,30 @@ app.get("/api/orni/blender/status", async (_req, res) => {
     return res.status(502).json({ connected: false, state: "unreachable", viewerUrl: viewerUrl || null, message: "The configured Blender worker could not be reached." });
   }
 });
+
+
+async function orniForward(req, res, route, method = "GET") {
+  if (!process.env.ORNI_ACCESS_TOKEN) return res.status(503).json({ error: "ORNI connection is not configured." });
+  try {
+    const upstream = await fetch(`${orniBase}${route}`, {
+      method,
+      headers: {
+        "Authorization": `Bearer ${process.env.ORNI_ACCESS_TOKEN}`,
+        ...(method !== "GET" ? { "Content-Type": "application/json" } : {})
+      },
+      ...(method !== "GET" ? { body: JSON.stringify(req.body || {}) } : {}),
+      signal: AbortSignal.timeout(120000)
+    });
+    const payload = await upstream.json().catch(() => ({ error: "ORNI returned an unreadable response." }));
+    return res.status(upstream.status).json(payload);
+  } catch (error) {
+    return res.status(error?.name === "TimeoutError" ? 504 : 502).json({ error: "Could not reach ORNI creative services.", retryable: true });
+  }
+}
+app.get("/api/orni/creative/status", (req, res) => orniForward(req, res, "/api/orni/creative/status"));
+app.get("/api/orni/assets", (req, res) => orniForward(req, res, "/api/orni/assets"));
+app.post("/api/orni/assets", (req, res) => orniForward(req, res, "/api/orni/assets", "POST"));
+app.post("/api/orni/designs/generate", (req, res) => orniForward(req, res, "/api/orni/designs/generate", "POST"));
 
 app.post("/api/orni/mission", async (req, res) => {
   const mission = req.body?.mission;
