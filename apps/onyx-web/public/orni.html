@@ -56,7 +56,27 @@ textarea{width:100%;min-height:135px;resize:vertical;background:#0c0e10;border:1
 <div class="metric"><strong>Execution policy</strong><span class="muted small">Analysis only until tools are connected and verified</span></div>
 </aside>
 </div>
-<section class="panel" style="margin-top:14px">
+
+<section class="panel" id="creative" style="margin-top:14px">
+  <div class="section-head"><div><div class="eyebrow">CELVANI · VISUAL DEVELOPMENT</div><h2 style="margin-top:5px">Creative Studio</h2><p class="muted small">Generate concepts, upload references, and evolve existing designs without losing the original direction.</p></div><span class="state" id="creativeState">CONNECTING</span></div>
+  <div class="creative-grid">
+    <div>
+      <label class="upload-label" for="assetUpload">＋ Add reference photos</label>
+      <input id="assetUpload" type="file" accept="image/png,image/jpeg,image/webp,image/avif" multiple>
+      <div class="creative-status" id="uploadStatus">Upload sketches, product photos, fabric references, logos, or earlier CELVANI concepts.</div>
+      <div class="asset-grid" id="assetGrid"></div>
+    </div>
+    <div>
+      <div class="eyebrow">DESIGN BRIEF</div>
+      <textarea class="creative-prompt" id="designPrompt" maxlength="6000" placeholder="Example: Keep the exact hoodie silhouette from the selected reference. Create a deep espresso-brown colorway, preserve the oversized Yeezy Gap proportions, and show front and back product views."></textarea>
+      <div class="creative-actions"><button id="generateDesign">Generate / edit design</button><button id="clearRefs" type="button" style="background:#24292e;color:#e7e9eb">Clear selection</button></div>
+      <div class="creative-status" id="designStatus">OpenAI image generation · Groq design intelligence</div>
+    </div>
+  </div>
+  <div class="gallery-result" id="generatedWrap"><img id="generatedImage" alt="ORNI generated CELVANI design"><div class="creative-status" id="generatedMeta" style="padding:10px"></div></div>
+</section>
+
+<section class="panel" id="missions" style="margin-top:14px">
 <h2>Delegate a CELVANI mission</h2><p class="muted small">ORNI returns structured analysis through ONYX. Live research, file editing and Blender control are enabled only when their integrations are connected.</p>
 <textarea id="mission" maxlength="6000" placeholder="Describe the CELVANI decision, product, campaign, supplier, or creative direction you want ORNI to analyze."></textarea>
 <button id="send">Send mission to ORNI</button><div class="muted small" id="hint" style="margin-top:10px">Your mission is routed securely through ONYX.</div><pre class="result" id="result"></pre>
@@ -76,6 +96,7 @@ assetUpload.addEventListener("change",async()=>{const files=[...assetUpload.file
 document.getElementById("clearRefs").addEventListener("click",()=>{selectedAssets.clear();renderAssets();});
 document.getElementById("generateDesign").addEventListener("click",async()=>{const prompt=document.getElementById("designPrompt").value.trim();if(!prompt){designStatus.textContent="Write a design brief first.";return;}const button=document.getElementById("generateDesign");button.disabled=true;button.textContent="ORNI is creating…";designStatus.textContent="Sending the brief and selected visual references to the image engine…";try{const response=await fetch("/api/orni/designs/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,assetKeys:[...selectedAssets],previousResponseId:previousImageResponseId})});const body=await response.json();if(!response.ok)throw new Error(body.error||"Image generation failed");previousImageResponseId=body.responseId||null;document.getElementById("generatedImage").src=body.asset.url;document.getElementById("generatedWrap").style.display="block";document.getElementById("generatedMeta").textContent="Created with "+body.model+" · Saved to CELVANI reference library";assets.unshift(body.asset);selectedAssets.clear();selectedAssets.add(body.asset.key);renderAssets();designStatus.textContent="Design generated and saved. Refine it with another instruction or select references."; }catch(error){designStatus.textContent=error.message;}finally{button.disabled=false;button.textContent="Generate / edit design";}});
 loadAssets();
-\nconst send=document.getElementById("send"),hint=document.getElementById("hint"),result=document.getElementById("result");
+
+const send=document.getElementById("send"),hint=document.getElementById("hint"),result=document.getElementById("result");
 send.addEventListener("click",async()=>{const mission=document.getElementById("mission").value.trim();if(!mission){hint.textContent="Enter a mission first.";return;}send.disabled=true;send.textContent="ORNI is working…";hint.textContent="Routing through ONYX.";result.style.display="none";try{const r=await fetch("/api/orni/mission",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mission})});const body=await r.json();result.textContent=JSON.stringify(body,null,2);result.style.display="block";hint.textContent=r.ok?"Mission report received. Review recommendations and assumptions.":(r.status===429||body.category==="provider_rate_limited"?"Groq rate or quota limit. Check Groq Console billing, usage and rate limits for the API key configured on ORNI.":"Mission failed. Review the diagnostic response.");}catch{hint.textContent="Could not reach ONYX. Try again shortly.";}finally{send.disabled=false;send.textContent="Send mission to ORNI";}});
 </script></body></html>
