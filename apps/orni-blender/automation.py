@@ -1,4 +1,4 @@
-import bpy, json, os, threading, queue
+import bpy, json, os, threading, queue, subprocess, shutil
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from mathutils import Vector
@@ -174,13 +174,28 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
     scene.frame_set(1)
     bpy.ops.wm.save_as_mainfile(filepath=str(OUT/"orni_retro_cinema.blend"))
     bpy.ops.render.render(write_still=True)
-    # Export a short MP4 using Blender's bundled FFmpeg backend; no external AI service.
-    scene.render.image_settings.file_format="FFMPEG"
-    scene.render.ffmpeg.format="MPEG4"; scene.render.ffmpeg.codec="H264"
-    scene.render.ffmpeg.constant_rate_factor="HIGH"; scene.render.ffmpeg.ffmpeg_preset="REALTIME"
-    scene.render.filepath=str(OUT/"orni_retro_cinema.mp4")
+    # Render temporary PNG frames, then encode with the system FFmpeg binary.
+    # This avoids relying on Blender being compiled with its optional FFmpeg backend.
+    frames_dir=OUT/"orni_retro_frames"
+    if frames_dir.exists(): shutil.rmtree(frames_dir,ignore_errors=True)
+    frames_dir.mkdir(parents=True,exist_ok=True)
+    scene.render.image_settings.file_format="PNG"
+    scene.render.filepath=str(frames_dir/"frame_")
     bpy.ops.render.render(animation=True)
     video_file=OUT/"orni_retro_cinema.mp4"
+    try:
+        subprocess.run(
+            ["ffmpeg","-y","-framerate",str(scene.render.fps),"-i",str(frames_dir/"frame_%04d.png"),
+             "-c:v","libx264","-pix_fmt","yuv420p","-crf","20","-preset","veryfast",
+             "-movflags","+faststart",str(video_file)],
+            check=True,capture_output=True,text=True,timeout=180
+        )
+    except FileNotFoundError:
+        raise RuntimeError("FFmpeg is not installed in the Blender worker.")
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError("FFmpeg encoding failed: "+(exc.stderr or "unknown error")[-1200:])
+    finally:
+        shutil.rmtree(frames_dir,ignore_errors=True)
     preview_file=OUT/"orni_retro_preview.png"
     blend_file=OUT/"orni_retro_cinema.blend"
     if not preview_file.is_file() or preview_file.stat().st_size<256:
