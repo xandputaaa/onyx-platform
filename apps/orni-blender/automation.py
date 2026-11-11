@@ -67,7 +67,7 @@ def create_hoodie():
     return {"ok":True,"scene":"CELVANI oversized hoodie blockout","blend":"/outputs/celvani_hoodie_blockout.blend","render":"/outputs/celvani_hoodie_blockout.png","note":"Concept blockout only; not a manufacturing-accurate garment or approved logo."}
 
 
-def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9"):
+def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""):
     clear_scene()
     ps1 = style == "ps1"
     duration = max(3,min(15,int(duration or 5)))
@@ -149,6 +149,21 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9"):
         for frame in range(1,scene.frame_end+1,4):
             mouth.scale=(1,0.15 if (frame//4)%2 else 1.0,1)
             mouth.keyframe_insert(data_path="scale",frame=frame)
+    if not ps1 and caption.strip():
+        # Camera-parented subtitle card for the PS2 dialogue/meme format.
+        words=caption.strip().replace("\\n"," ").split()
+        lines=[]; line=""
+        for word in words:
+            candidate=(line+" "+word).strip()
+            if len(candidate)>34 and line:
+                lines.append(line); line=word
+            else: line=candidate
+        if line: lines.append(line)
+        text_data=bpy.data.curves.new("ORNI PS2 dialogue caption","FONT")
+        text_data.body="\\n".join(lines[:3]); text_data.align_x="CENTER"; text_data.align_y="CENTER"; text_data.size=0.22
+        caption_obj=bpy.data.objects.new("PS2 dialogue caption",text_data); scene.collection.objects.link(caption_obj)
+        caption_obj.parent=cam; caption_obj.location=(0,-1.35,-4.2); caption_obj.rotation_euler=(0,0,0)
+        caption_obj.data.materials.append(mats["cream"])
     head.rotation_euler[2]=0.0; head.keyframe_insert(data_path="rotation_euler",frame=1)
     head.rotation_euler[2]=0.16; head.keyframe_insert(data_path="rotation_euler",frame=scene.frame_end)
     for obj in scene.objects:
@@ -188,7 +203,7 @@ def process_jobs():
         if job["action"]=="hoodie":
             job["result"]=create_hoodie()
         elif job["action"]=="retro":
-            job["result"]=create_retro_cinema(job.get("style","ps1"),job.get("duration",5),job.get("aspect_ratio","16:9"))
+            job["result"]=create_retro_cinema(job.get("style","ps1"),job.get("duration",5),job.get("aspect_ratio","16:9"),job.get("caption",""))
         elif job["action"]=="render":
             scene=bpy.context.scene
             scene.render.filepath=str(OUT/"celvani_render.png")
@@ -226,7 +241,7 @@ class Handler(BaseHTTPRequestHandler):
         body=json.loads(self.rfile.read(n) or b"{}")
         action={"/api/scene/celvani-hoodie":"hoodie","/api/scene/retro-cinema":"retro","/api/render":"render"}.get(self.path)
         if not action: return self.reply(404,{"error":"unknown_action"})
-        job={"action":action,"style":body.get("style","ps1") if isinstance(body,dict) else "ps1","duration":body.get("duration",5) if isinstance(body,dict) else 5,"aspect_ratio":body.get("aspectRatio","16:9") if isinstance(body,dict) else "16:9","done":threading.Event(),"result":None}
+        job={"action":action,"style":body.get("style","ps1") if isinstance(body,dict) else "ps1","duration":body.get("duration",5) if isinstance(body,dict) else 5,"aspect_ratio":body.get("aspectRatio","16:9") if isinstance(body,dict) else "16:9","caption":str(body.get("caption",""))[:120] if isinstance(body,dict) else "","done":threading.Event(),"result":None}
         JOBS.put(job)
         if not job["done"].wait(540): return self.reply(504,{"error":"Blender operation timed out"})
         result=job["result"] or {"error":"empty_result"}
