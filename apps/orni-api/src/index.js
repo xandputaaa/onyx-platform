@@ -65,7 +65,7 @@ Return a concise structured report with these fields:
 - assumptions
 - nextActions
 
-Do not imply that a recommendation is an executed action.`;
+Do not imply that a recommendation is an executed action. Return only data matching the supplied JSON schema.`;
 
 app.get("/health", (_req, res) => {
   res.status(200).json({
@@ -137,6 +137,27 @@ app.get("/api/orni/status", (_req, res) => {
   });
 });
 
+
+const missionReportSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "mission", "findings", "intelligence", "opportunities", "risks",
+    "recommendation", "approvalRequired", "assumptions", "nextActions"
+  ],
+  properties: {
+    mission: { type: "string" },
+    findings: { type: "array", items: { type: "string" } },
+    intelligence: { type: "array", items: { type: "string" } },
+    opportunities: { type: "array", items: { type: "string" } },
+    risks: { type: "array", items: { type: "string" } },
+    recommendation: { type: "string" },
+    approvalRequired: { type: "boolean" },
+    assumptions: { type: "array", items: { type: "string" } },
+    nextActions: { type: "array", items: { type: "string" } }
+  }
+};
+
 app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
   const mission = typeof req.body?.mission === "string" ? req.body.mission.trim() : "";
   if (!mission) return res.status(400).json({ error: "mission is required" });
@@ -160,7 +181,16 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
         model,
         instructions: orniSystemPrompt,
         input: mission,
-        max_output_tokens: 1400
+        max_output_tokens: 1800,
+        store: false,
+        text: {
+          format: {
+            type: "json_schema",
+            name: "orni_mission_report",
+            strict: true,
+            schema: missionReportSchema
+          }
+        }
       }),
       signal: controller.signal
     });
@@ -175,17 +205,38 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
       .flatMap(item => item.content || [])
       .filter(item => item.type === "output_text")
       .map(item => item.text)
-      .join("\n");
+      .join("\\n");
 
-    if (!output) return res.status(502).json({ error: "ORNI received an empty model response" });
+    if (payload.status === "incomplete") {
+      return res.status(502).json({
+        error: "ORNI report was incomplete",
+        reason: payload.incomplete_details?.reason || "unknown"
+      });
+    }
+
+    if (!output) {
+      const refusal = (payload.output || [])
+        .flatMap(item => item.content || [])
+        .find(item => item.type === "refusal");
+      return res.status(502).json({
+        error: refusal?.refusal || "ORNI received an empty model response"
+      });
+    }
+
+    let report;
+    try {
+      report = JSON.parse(output);
+    } catch {
+      return res.status(502).json({ error: "ORNI returned a report that could not be parsed" });
+    }
 
     return res.status(200).json({
       agent: "ORNI",
       domain: "CELVANI",
       missionId: randomUUID(),
       model,
-      report: output,
-      approvalRequired: true,
+      report,
+      approvalRequired: report.approvalRequired,
       generatedAt: new Date().toISOString(),
       execution: "analysis_only"
     });
