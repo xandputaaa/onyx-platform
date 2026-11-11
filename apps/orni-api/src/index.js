@@ -174,6 +174,11 @@ const missionReportSchema = {
 
 app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
   const mission = typeof req.body?.mission === "string" ? req.body.mission.trim() : "";
+  const requestId = req.body?.requestId == null ? null : req.body.requestId;
+  if (requestId !== null && (typeof requestId !== "string" || requestId.trim().length === 0 || requestId.length > 128)) {
+    return res.status(400).json({ error: "requestId must be a non-empty string of 128 characters or fewer" });
+  }
+  const missionId = randomUUID();
   if (!mission) return res.status(400).json({ error: "mission is required" });
   if (mission.length > 6000) return res.status(413).json({ error: "mission must be 6000 characters or fewer" });
   if (!process.env.OPENAI_API_KEY) {
@@ -247,7 +252,8 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
     return res.status(200).json({
       agent: "ORNI",
       domain: "CELVANI",
-      missionId: randomUUID(),
+      missionId,
+      requestId,
       model,
       report,
       approvalRequired: report.approvalRequired,
