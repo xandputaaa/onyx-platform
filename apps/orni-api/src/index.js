@@ -135,7 +135,7 @@ app.get("/api/orni/status", (_req, res) => {
     status: "foundation",
     capabilities: {
       authenticatedMissionEndpoint: Boolean(process.env.ORNI_ACCESS_TOKEN && process.env.GROQ_API_KEY),
-      celvaniIntelligence: "model-assisted analysis; live research integration not connected",
+      celvaniIntelligence: "Groq model-assisted analysis; live research integration not connected",
       creativeStudio: "planned",
       blenderAutomation: "planned",
       visualWorkspaceStreaming: "planned",
@@ -236,7 +236,7 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
         providerCode: providerError.code || null,
         retryAfter: retryAfter || null,
         action: limited
-          ? "Check the OpenAI project billing, usage limits, and rate limits for the API key configured on the ORNI Railway service."
+          ? "Check Groq Console billing, usage limits, and rate limits for the GROQ_API_KEY configured on the ORNI Railway service."
           : "Check the ORNI provider configuration and deployment logs."
       });
     }
