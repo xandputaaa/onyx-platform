@@ -120,10 +120,23 @@ def create_crash_woods_cinema():
             bpy.ops.mesh.primitive_cone_add(vertices=5, radius1=0.22, radius2=0.12, depth=h*0.42, location=(x,y,h*0.19))
             trunk=bpy.context.object; trunk.name="Low-poly pine trunk"; trunk.data.materials.append(bark)
     # A chunky compact car, built as separate readable game meshes.
+    # Crash marker tree at the road edge: the front-right corner reaches it on impact.
+    bpy.ops.mesh.primitive_cone_add(vertices=7,radius1=0.34,radius2=0.24,depth=2.9,location=(1.22,-1.62,1.45))
+    impact_trunk=bpy.context.object; impact_trunk.name="Impact tree trunk"; impact_trunk.data.materials.append(bark)
+    bpy.ops.mesh.primitive_cone_add(vertices=7,radius1=1.65,radius2=0,depth=3.8,location=(1.22,-1.62,4.1))
+    impact_crown=bpy.context.object; impact_crown.name="Impact tree canopy"; impact_crown.data.materials.append(pine)
     car_parts=[]
     body=cube("Car body",(0,-5,0.95),(2.35,4.2,0.85),carpaint,0.12); car_parts.append(body)
-    cabin=cube("Car cabin",(0,-5.05,1.65),(1.72,2.15,0.85),glass,0.10); car_parts.append(cabin)
+    # Open-window cabin keeps the crash dummy readable inside the car.
+    roof=cube("Car roof",(0,-5.10,2.30),(1.78,2.10,0.20),carpaint,0.07); car_parts.append(roof)
+    for x in (-0.78,0.78):
+        for y in (-6.05,-4.12):
+            post=cube("Cabin window pillar",(x,y,1.92),(0.12,0.14,0.78),carpaint,0.025); car_parts.append(post)
+    rear_glass=cube("Rear window",(0,-6.13,1.98),(1.42,0.045,0.46),glass,0.015); car_parts.append(rear_glass)
     hood=cube("Car hood",(0,-3.45,1.25),(2.25,1.05,0.25),carpaint,0.04); car_parts.append(hood)
+    front_bumper=cube("Front bumper",(0,-2.88,0.72),(2.28,0.20,0.22),rubber,0.035); car_parts.append(front_bumper)
+    rear_bumper=cube("Rear bumper",(0,-7.12,0.72),(2.28,0.20,0.22),rubber,0.035); car_parts.append(rear_bumper)
+    grille=cube("Front grille",(0,-2.91,1.02),(0.72,0.045,0.22),rubber,0.02); car_parts.append(grille)
     for x in (-1.02,1.02):
         for y in (-6.35,-3.65):
             bpy.ops.mesh.primitive_cylinder_add(vertices=8,radius=0.43,depth=0.22,location=(x,y,0.48),rotation=(0,math.pi/2,0))
@@ -143,6 +156,15 @@ def create_crash_woods_cinema():
         thigh=cube("Crash dummy | thigh",(side*0.2,-5.25,0.43),(0.25,0.28,0.65),metal,0.04)
         shin=cube("Crash dummy | shin",(side*0.2,-5.25,0.08),(0.22,0.25,0.55),metal,0.035)
         limbs.extend([upper,lower,thigh,shin]); dummy_parts.extend([upper,lower,thigh,shin])
+    # Dark mechanical joints make the crash-test dummy silhouette immediately legible.
+    for x in (-0.52,0.52):
+        for z in (1.36,0.98):
+            bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1,radius=0.15,location=(x,-5.25,z))
+            j=bpy.context.object; j.name="Crash dummy | articulated arm joint"; j.data.materials.append(joint); dummy_parts.append(j)
+    for x in (-0.20,0.20):
+        for z in (0.43,0.08):
+            bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1,radius=0.16,location=(x,-5.25,z))
+            j=bpy.context.object; j.name="Crash dummy | articulated leg joint"; j.data.materials.append(joint); dummy_parts.append(j)
     # Dummy begins inside the car, then is staged beside it and walks into the trees.
     # Animate grouped pieces as a simple articulated game character.
     for obj in dummy_parts:
