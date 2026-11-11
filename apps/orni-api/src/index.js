@@ -1,6 +1,6 @@
 import express from "express";
 import helmet from "helmet";
-import { timingSafeEqual } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 
 const app = express();
 app.disable("x-powered-by");
@@ -182,7 +182,7 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
     return res.status(200).json({
       agent: "ORNI",
       domain: "CELVANI",
-      missionId: crypto.randomUUID(),
+      missionId: randomUUID(),
       model,
       report: output,
       approvalRequired: true,
