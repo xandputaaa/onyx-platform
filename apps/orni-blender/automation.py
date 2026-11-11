@@ -457,6 +457,11 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
             for fc in obj.animation_data.action.fcurves:
                 for kp in fc.keyframe_points:
                     kp.interpolation="CONSTANT" if (not ps1 and obj==cam) else "LINEAR"
+    if ps1:
+        for index,(key,color) in enumerate(palette.items()):
+            apply_psx_pixel_texture(mats[key],color,"PS1 "+key,index)
+    set_job_status(stage="UV unwrapping retro character and environment",progress=16)
+    retro_uv_mesh_count=unwrap_scene_meshes()
     scene.frame_set(1)
     bpy.ops.wm.save_as_mainfile(filepath=str(OUT/"orni_retro_cinema.blend"))
     bpy.ops.render.render(write_still=True)
