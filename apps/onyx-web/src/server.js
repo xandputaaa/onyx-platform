@@ -43,7 +43,7 @@ app.get("/api/orni/blender/status", async (_req, res) => {
     });
   }
   try {
-    const r = await fetch(`${workerBase}/status`, { signal: AbortSignal.timeout(4000) });
+    const r = await fetch(`${workerBase}/`, { signal: AbortSignal.timeout(4000) });
     const body = await r.json().catch(() => ({}));
     return res.status(r.ok ? 200 : 502).json({ connected: r.ok, state: r.ok ? "connected" : "degraded", viewerUrl: viewerUrl || null, worker: body });
   } catch {
