@@ -141,10 +141,10 @@ def create_crash_woods_cinema():
     # Car drives toward a roadside tree and jolts to a stop at ~3 seconds.
     for obj in car_parts:
         start=obj.location.copy()
-        obj.location.y=-18; obj.keyframe_insert(data_path="location",frame=1)
-        obj.location.y=-5; obj.keyframe_insert(data_path="location",frame=27)
-        obj.location.y=-4.1; obj.keyframe_insert(data_path="location",frame=34)
-        obj.location.y=-4.1; obj.keyframe_insert(data_path="location",frame=180)
+        obj.location.y=start.y-13.0; obj.keyframe_insert(data_path="location",frame=1)
+        obj.location.y=start.y; obj.keyframe_insert(data_path="location",frame=27)
+        obj.location.y=start.y+0.9; obj.keyframe_insert(data_path="location",frame=34)
+        obj.location.y=start.y+0.9; obj.keyframe_insert(data_path="location",frame=180)
     # Dummy appears in the driver's seat, exits on the near side, then walks away.
     # Use a coherent group translation; staggered arm/leg swings suggest a PS1 walk cycle.
     for obj in dummy_parts:
