@@ -108,10 +108,19 @@ textarea{width:100%;min-height:135px;resize:vertical;background:#0c0e10;border:1
       <div class="eyebrow">GENERATED MOTION</div>
       <img id="retroStill" alt="ORNI retro Blender preview" hidden style="width:100%;max-width:640px;border-radius:12px;margin:12px 0;border:1px solid var(--line)">
       <div class="gallery-result" id="generatedVideoWrap" style="display:none">
-        <video id="generatedVideo" controls playsinline style="width:100%;display:block;background:#050607"></video>
+        <video id="generatedVideo" controls playsinline preload="metadata" style="width:100%;display:block;background:#050607"></video>
         <div class="creative-status" id="generatedVideoMeta" style="padding:10px"></div>
       </div>
-      <p class="muted small" id="videoPlaceholder">Your completed campaign clip will appear here. Temporary source references are deleted after generation.</p>
+      <div id="renderSavePanel" hidden style="margin-top:12px">
+        <div class="creative-status" id="renderDimensions">Original render dimensions will appear here.</div>
+        <div class="creative-actions" style="margin-top:10px">
+          <a class="upload-label" id="saveVideo" href="#" download>↓ Save MP4 · original quality</a>
+          <a class="upload-label" id="saveStill" href="#" download>↓ Save still · PNG</a>
+          <a class="upload-label" id="saveBlend" href="#" download>↓ Save editable Blender scene</a>
+        </div>
+        <p class="muted small">Downloads are the exact files produced by Blender. ORNI does not resize, crop, or recompress them during download.</p>
+      </div>
+      <p class="muted small" id="videoPlaceholder">Completed renders appear here with original-resolution downloads and the editable Blender project.</p>
     </div>
   </div>
 </section>
@@ -185,9 +194,44 @@ fetch("/api/orni/reference-cinema").then(r=>r.json()).then(d=>{if(d.ok)videoStat
 
 document.getElementById("buildRetroScene").addEventListener("click",async()=>{
   const style=videoStyle.value==="ps2-cutscene"?"ps2":videoStyle.value==="crash-woods"?"crash-woods":"ps1";
-  const button=document.getElementById("buildRetroScene");button.disabled=true;videoStatus.textContent="Building an editable "+style.toUpperCase()+" scene and rendering a short MP4 in Blender…";
-  try{const r=await fetch("/api/orni/blender/scene/retro-cinema",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({style,duration:style==="crash-woods"?15:Number(videoDuration.value),aspectRatio:style==="crash-woods"?"16:9":document.getElementById("videoRatio").value,caption:document.getElementById("videoDialogue").value.trim()})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Blender retro scene failed");videoStatus.textContent="Created "+d.scene+" · "+d.frames+" frames. Loading finished MP4…";const video=document.getElementById("generatedVideo");video.src=(style==="crash-woods"?"/api/orni/blender/crash-woods-video":"/api/orni/blender/retro-video")+"?ts="+Date.now();const still=document.getElementById("retroStill");still.src=(style==="crash-woods"?"/api/orni/blender/crash-woods-preview":"/api/orni/blender/retro-preview")+"?ts="+Date.now();still.hidden=false;document.getElementById("generatedVideoWrap").style.display="block";document.getElementById("videoPlaceholder").style.display="none";document.getElementById("generatedVideoMeta").textContent="Blender · "+d.style+" · editable scene and MP4 rendered";video.load();videoStatus.textContent="Blender scene and MP4 rendered. Open the live Blender workspace to edit the scene.";
-  }catch(e){videoStatus.textContent=e.message;}finally{button.disabled=false;}
+  const button=document.getElementById("buildRetroScene");
+  const crash=style==="crash-woods";
+  const videoPath=crash?"/api/orni/blender/crash-woods-video":"/api/orni/blender/retro-video";
+  const stillPath=crash?"/api/orni/blender/crash-woods-preview":"/api/orni/blender/retro-preview";
+  const blendPath=crash?"/api/orni/blender/crash-woods-blend":"/api/orni/blender/retro-blend";
+  button.disabled=true;
+  videoStatus.textContent="Building the editable "+style.toUpperCase()+" scene and rendering in Blender. Keep this page open…";
+  document.getElementById("renderSavePanel").hidden=true;
+  try{
+    const r=await fetch("/api/orni/blender/scene/retro-cinema",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({style,duration:crash?15:Number(videoDuration.value),aspectRatio:crash?"16:9":document.getElementById("videoRatio").value,caption:document.getElementById("videoDialogue").value.trim()})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||"Blender render failed");
+    const videoUrl=videoPath+"?ts="+Date.now(),stillUrl=stillPath+"?ts="+Date.now();
+    const video=document.getElementById("generatedVideo"),still=document.getElementById("retroStill");
+    video.src=videoUrl;still.src=stillUrl;still.hidden=false;
+    document.getElementById("generatedVideoWrap").style.display="block";
+    document.getElementById("videoPlaceholder").style.display="none";
+    document.getElementById("generatedVideoMeta").textContent="Blender · "+d.style+" · "+(d.durationSeconds||"")+" sec · "+(d.frames||"")+" frames";
+    const savePanel=document.getElementById("renderSavePanel");
+    document.getElementById("saveVideo").href=videoPath;
+    document.getElementById("saveVideo").download=crash?"ORNI-crash-woods-15s.mp4":"ORNI-retro-cinema.mp4";
+    document.getElementById("saveStill").href=stillPath;
+    document.getElementById("saveStill").download=crash?"ORNI-crash-woods-preview.png":"ORNI-retro-preview.png";
+    document.getElementById("saveBlend").href=blendPath;
+    document.getElementById("saveBlend").download=crash?"ORNI-crash-woods.blend":"ORNI-retro-cinema.blend";
+    const width=d.resolutionX|| (crash?320:style==="ps2"?480:320);
+    const height=d.resolutionY|| (crash?180:style==="ps2"?270:180);
+    document.getElementById("renderDimensions").textContent="ORIGINAL OUTPUT · "+width+" × "+height+" px · "+(d.fps||12)+" FPS · "+(d.durationSeconds||"")+" sec · "+(d.aspectRatio||"16:9");
+    savePanel.hidden=false;
+    await new Promise((resolve,reject)=>{
+      let pending=2,failed=false;
+      const done=()=>{if(--pending===0)resolve();};
+      video.onloadedmetadata=done;video.onerror=()=>{if(!failed){failed=true;reject(new Error("The render completed, but the MP4 could not be loaded for preview."));}};
+      still.onload=done;still.onerror=()=>{if(!failed){failed=true;reject(new Error("The render completed, but the PNG preview could not be loaded."));}};
+      video.load();
+    });
+    videoStatus.textContent="Render complete. Preview is ready; save the original MP4, PNG still, or editable .blend below.";
+  }catch(e){videoStatus.textContent=e.message;}
+  finally{button.disabled=false;}
 });
 document.getElementById("sendCinemaMission").addEventListener("click",()=>{
   const style=videoStyle.value;
