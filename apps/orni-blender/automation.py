@@ -210,6 +210,18 @@ def create_crash_woods_cinema():
         for z in (0.43,0.08):
             bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1,radius=0.16,location=(x,-5.25,z))
             j=bpy.context.object; j.name="Crash dummy | articulated leg joint"; j.data.materials.append(joint); dummy_parts.append(j)
+    # Move each limb origin to its anatomical joint so animation rotates at shoulders, elbows, hips and knees.
+    for limb in limbs:
+        side=-1 if limb.location.x<0 else 1
+        if "upper arm" in limb.name: pivot=(side*0.52,-5.25,1.72)
+        elif "forearm" in limb.name: pivot=(side*0.52,-5.25,0.99)
+        elif "thigh" in limb.name: pivot=(side*0.20,-5.25,0.75)
+        else: pivot=(side*0.20,-5.25,0.40)
+        bpy.ops.object.select_all(action="DESELECT")
+        limb.select_set(True)
+        bpy.context.view_layer.objects.active=limb
+        bpy.context.scene.cursor.location=Vector(pivot)
+        bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
     # Dummy begins inside the car, then is staged beside it and walks into the trees.
     # Animate grouped pieces as a simple articulated game character.
     for obj in dummy_parts:
