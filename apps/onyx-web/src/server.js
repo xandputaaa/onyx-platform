@@ -61,5 +61,5 @@ app.post("/api/orni/mission", async (req, res) => {
   }
 });
 
-app.get("*", (_req, res) => res.sendFile(path.join(here, "../public/index.html")));
+app.use((_req, res) => res.sendFile(path.join(here, "../public/index.html")));
 app.listen(port, "0.0.0.0", () => console.log(`ONYX web listening on ${port}`));
