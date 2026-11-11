@@ -349,9 +349,11 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
         cube("PS2 face | left eye",(-0.16,-0.425,2.57),(0.075,0.035,0.07),mats["ink"],0.008)
         cube("PS2 face | right eye",(0.16,-0.425,2.57),(0.075,0.035,0.07),mats["ink"],0.008)
         mouth=cube("PS2 face | dialogue mouth",(0,-0.455,2.34),(0.19,0.035,0.075),mats["ink"],0.008)
+    arms=[]
     for side in (-1,1):
         arm=cube("Retro protagonist | sleeve",(side*0.72,0,1.62),(0.42,0.48,1.05),mats["blue"],0.02)
         arm.rotation_euler[1]=side*0.12
+        arms.append((side,arm))
         leg=cube("Retro protagonist | trouser",(side*0.25,0,0.58),(0.42,0.48,1.05),mats["ink"],0.02)
         cube("Retro protagonist | shoe",(side*0.25,-0.12,0.08),(0.48,0.72,0.2),mats["red"],0.02)
     # A sparse, game-like alley / stage with block geometry and a long vanishing point.
