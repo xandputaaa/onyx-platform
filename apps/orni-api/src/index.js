@@ -159,6 +159,14 @@ app.get("/api/orni/profile", (_req, res) => {
 });
 
 
+app.get("/api/orni/blender/job-status", requireAgentToken, async (_req,res) => {
+  const base=(process.env.ORNI_BLENDER_API_URL||"").replace(/\/$/,"");
+  if(!base||!process.env.ORNI_BLENDER_TOKEN) return res.status(503).json({error:"Blender private API is not configured."});
+  try {
+    const r=await fetch(base+"/job-status",{headers:{"Authorization":"Bearer "+process.env.ORNI_BLENDER_TOKEN},signal:AbortSignal.timeout(4000)});
+    return res.status(r.status).json(await r.json().catch(()=>({error:"Invalid Blender job status"})));
+  } catch { return res.status(502).json({error:"Could not read live Blender render progress."}); }
+});
 app.get("/api/orni/blender/status", requireAgentToken, async (_req,res) => {
   const base=(process.env.ORNI_BLENDER_API_URL||"").replace(/\/$/,"");
   if(!base) return res.json({connected:false,state:"not_configured",message:"Blender private API URL is not configured."});
