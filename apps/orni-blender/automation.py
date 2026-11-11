@@ -215,7 +215,7 @@ def create_crash_woods_cinema():
     except subprocess.CalledProcessError as exc: raise RuntimeError("FFmpeg encoding failed: "+(exc.stderr or "unknown error")[-1200:])
     finally: shutil.rmtree(frames_dir,ignore_errors=True)
     if not video_file.is_file() or video_file.stat().st_size<1024: raise RuntimeError("15-second crash-woods MP4 was not created.")
-    return {"ok":True,"scene":"ORNI PS1 crash dummy in the woods","style":"ps1-crash-woods","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"note":"Procedural low-poly first pass; verify character exit, walk and moon-pan timing in the rendered video."}
+    return {"ok":True,"scene":"ORNI PS1 crash dummy in the woods","style":"ps1-crash-woods","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"resolutionX":320,"resolutionY":180,"aspectRatio":"16:9","note":"Procedural low-poly first pass; verify character exit, walk and moon-pan timing in the rendered video."}
 
 
 def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""):
@@ -356,7 +356,7 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
         raise RuntimeError("Blender did not save the editable retro scene.")
     if not video_file.is_file() or video_file.stat().st_size<1024:
         raise RuntimeError("Blender did not produce a valid retro MP4. Check FFmpeg support and render logs.")
-    return {"ok":True,"scene":"ORNI "+("PS1 low-poly" if ps1 else "PS2 cutscene")+" retro cinema","style":style,"blend":"/outputs/orni_retro_cinema.blend","preview":"/outputs/orni_retro_preview.png","video":"/outputs/orni_retro_cinema.mp4","frames":scene.frame_end,"fps":12,"durationSeconds":duration,"aspectRatio":aspect_ratio,"note":"Procedural proof-of-pipeline scene. Replace the placeholder character and set with approved CELVANI assets for production campaigns. PS2 mouth motion is a timing placeholder; optional on-screen dialogue caption is included, but no voice or audio is generated."}
+    return {"ok":True,"scene":"ORNI "+("PS1 low-poly" if ps1 else "PS2 cutscene")+" retro cinema","style":style,"blend":"/outputs/orni_retro_cinema.blend","preview":"/outputs/orni_retro_preview.png","video":"/outputs/orni_retro_cinema.mp4","frames":scene.frame_end,"fps":12,"durationSeconds":duration,"resolutionX":base_width,"resolutionY":base_height,"aspectRatio":aspect_ratio,"note":"Procedural proof-of-pipeline scene. Replace the placeholder character and set with approved CELVANI assets for production campaigns. PS2 mouth motion is a timing placeholder; optional on-screen dialogue caption is included, but no voice or audio is generated."}
 
 
 JOBS=queue.Queue()
