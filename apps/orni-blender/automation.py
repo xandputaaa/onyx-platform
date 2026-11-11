@@ -165,6 +165,15 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9"):
     scene.render.ffmpeg.constant_rate_factor="HIGH"; scene.render.ffmpeg.ffmpeg_preset="REALTIME"
     scene.render.filepath=str(OUT/"orni_retro_cinema.mp4")
     bpy.ops.render.render(animation=True)
+    video_file=OUT/"orni_retro_cinema.mp4"
+    preview_file=OUT/"orni_retro_preview.png"
+    blend_file=OUT/"orni_retro_cinema.blend"
+    if not preview_file.is_file() or preview_file.stat().st_size<256:
+        raise RuntimeError("Blender did not produce a valid retro preview image.")
+    if not blend_file.is_file() or blend_file.stat().st_size<1024:
+        raise RuntimeError("Blender did not save the editable retro scene.")
+    if not video_file.is_file() or video_file.stat().st_size<1024:
+        raise RuntimeError("Blender did not produce a valid retro MP4. Check FFmpeg support and render logs.")
     return {"ok":True,"scene":"ORNI "+("PS1 low-poly" if ps1 else "PS2 cutscene")+" retro cinema","style":style,"blend":"/outputs/orni_retro_cinema.blend","preview":"/outputs/orni_retro_preview.png","video":"/outputs/orni_retro_cinema.mp4","frames":scene.frame_end,"fps":12,"durationSeconds":duration,"aspectRatio":aspect_ratio,"note":"Procedural proof-of-pipeline scene. Replace the placeholder character and set with approved CELVANI assets for production campaigns. PS2 mouth motion is a timing placeholder; no dialogue or audio is included."}
 
 
@@ -219,7 +228,7 @@ class Handler(BaseHTTPRequestHandler):
         if not action: return self.reply(404,{"error":"unknown_action"})
         job={"action":action,"style":body.get("style","ps1") if isinstance(body,dict) else "ps1","duration":body.get("duration",5) if isinstance(body,dict) else 5,"aspect_ratio":body.get("aspectRatio","16:9") if isinstance(body,dict) else "16:9","done":threading.Event(),"result":None}
         JOBS.put(job)
-        if not job["done"].wait(900): return self.reply(504,{"error":"Blender operation timed out"})
+        if not job["done"].wait(540): return self.reply(504,{"error":"Blender operation timed out"})
         result=job["result"] or {"error":"empty_result"}
         return self.reply(200 if result.get("ok") else 500,result)
     def log_message(self,*args): pass
