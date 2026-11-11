@@ -45,7 +45,8 @@ textarea{width:100%;min-height:135px;resize:vertical;background:#0c0e10;border:1
 <h2>Blender · Live workspace</h2><div class="muted small">A visual window into ORNI's 3D production session</div>
 <div class="viewport" id="viewport"><div class="feed"><div class="orb"></div><strong id="feedTitle">Blender remote workspace is ready to connect</strong><p id="feedText">ORNI will open a real remote Blender desktop here when the secure noVNC viewer is configured. This is a connection placeholder, not simulated footage.</p></div></div>
 <div class="meta"><span id="workerState">WORKER: NOT CONFIGURED</span><span id="streamState">STREAM: OFFLINE</span></div>
-<div class="notice" id="workerNotice">The live stream requires a dedicated worker with Blender installed, a render or desktop capture process, and a secure stream transport. This workspace is ready to display that feed once the worker is provisioned.</div>
+<div class="notice" id="workerNotice">Blender desktop and authenticated control API are being connected. The workspace will show the real session when both health checks pass.</div>
+<div class="actions" style="margin-top:12px"><button class="primary" id="buildHoodie" type="button">Build CELVANI hoodie blockout</button><span class="muted small" id="blenderActionStatus">Available when Blender control connects.</span></div>
 </section>
 <aside class="panel" id="system">
 <h2>ORNI system</h2><div class="muted small">Specialist status and connected capabilities</div>
@@ -145,7 +146,7 @@ async function connectBlender(){
       feedTitle.textContent=d.connected?"Blender worker online · viewer starting":"Waiting for Blender worker";
       feedText.textContent=d.message||"The workspace will attach automatically when the Blender worker and secure viewer are configured.";
       document.getElementById("blenderCapability").textContent=d.connected?"Worker online; viewer pending":"Worker not configured";
-      notice.textContent="Automatic connection is enabled. The remote Blender worker and authenticated HTTPS viewer still need to be provisioned; this panel will reconnect as soon as they are available.";
+      notice.textContent="Automatic connection is enabled. The existing Blender desktop is being validated. Automatic reconnection remains enabled.";
     }
   }catch{
     workerState.textContent="WORKER: RECONNECTING";
@@ -154,6 +155,12 @@ async function connectBlender(){
     feedText.textContent="ORNI Studio will retry automatically.";
   }
 }
+document.getElementById("buildHoodie")?.addEventListener("click",async()=>{
+  const button=document.getElementById("buildHoodie"),status=document.getElementById("blenderActionStatus");
+  button.disabled=true;status.textContent="Sending CELVANI hoodie brief to Blender…";
+  try{const r=await fetch("/api/orni/blender/scene/celvani-hoodie",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});const d=await r.json();if(!r.ok)throw new Error(d.error||"Blender action failed");status.textContent="Created "+d.scene+". Inspect the blockout in Blender.";}
+  catch(e){status.textContent=e.message;}finally{button.disabled=false;}
+});
 connectBlender();
 setInterval(connectBlender,8000);
 
@@ -161,7 +168,7 @@ const assetGrid=document.getElementById("assetGrid"),assetUpload=document.getEle
 let assets=[],selectedAssets=new Set(),previousImageResponseId=null;
 function renderAssets(){assetGrid.replaceChildren();for(const asset of assets){const card=document.createElement("div");card.className="asset"+(selectedAssets.has(asset.key)?" selected":"");card.title=asset.name;const img=document.createElement("img");img.src=asset.url;img.alt=asset.name;const name=document.createElement("span");name.textContent=asset.name;card.append(img,name);card.addEventListener("click",()=>{if(selectedAssets.has(asset.key))selectedAssets.delete(asset.key);else selectedAssets.add(asset.key);renderAssets();});assetGrid.append(card);}}
 async function loadAssets(){try{const [statusR,assetsR]=await Promise.all([fetch("/api/orni/creative/status"),fetch("/api/orni/assets")]);const status=await statusR.json();const data=await assetsR.json();creativeState.textContent=status.ok?"IMAGE ENGINE READY":"IMAGE ENGINE CHECK";assets=data.assets||[];renderAssets();}catch{creativeState.textContent="CREATIVE SERVICE OFFLINE";}}
-assetUpload.addEventListener("change",async()=>{const files=[...assetUpload.files||[]];if(!files.length)return;uploadStatus.textContent="Uploading "+files.length+" reference image(s)…";for(const file of files){if(file.size>12*1024*1024){uploadStatus.textContent=file.name+" exceeds the 12 MB limit.";continue;}const dataUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});try{const response=await fetch("/api/orni/assets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:file.name,mimeType:file.type,data:dataUrl.split(",")[1]})});const body=await response.json();if(!response.ok)throw new Error(body.error||"Upload failed");assets.unshift(body.asset);selectedAssets.add(body.asset.key);renderAssets();uploadStatus.textContent="Added "+file.name+" as a temporary reference. It will be deleted after generation.;}catch(error){uploadStatus.textContent=error.message;}}assetUpload.value="";});
+assetUpload.addEventListener("change",async()=>{const files=[...assetUpload.files||[]];if(!files.length)return;uploadStatus.textContent="Uploading "+files.length+" reference image(s)…";for(const file of files){if(file.size>12*1024*1024){uploadStatus.textContent=file.name+" exceeds the 12 MB limit.";continue;}const dataUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});try{const response=await fetch("/api/orni/assets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:file.name,mimeType:file.type,data:dataUrl.split(",")[1]})});const body=await response.json();if(!response.ok)throw new Error(body.error||"Upload failed");assets.unshift(body.asset);selectedAssets.add(body.asset.key);renderAssets();uploadStatus.textContent="Added "+file.name+" as a temporary reference. It will be deleted after generation.";}catch(error){uploadStatus.textContent=error.message;}}assetUpload.value="";});
 document.getElementById("clearRefs").addEventListener("click",()=>{selectedAssets.clear();renderAssets();});
 document.getElementById("generateDesign").addEventListener("click",async()=>{const prompt=document.getElementById("designPrompt").value.trim();if(!prompt){designStatus.textContent="Write a design brief first.";return;}const button=document.getElementById("generateDesign");button.disabled=true;button.textContent="ORNI is creating…";designStatus.textContent="Sending the brief and selected visual references to the image engine…";try{const response=await fetch("/api/orni/designs/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,assetKeys:[...selectedAssets],previousResponseId:previousImageResponseId})});const body=await response.json();if(!response.ok)throw new Error(body.error||"Image generation failed");previousImageResponseId=body.responseId||null;document.getElementById("generatedImage").src=body.asset.url;document.getElementById("generatedWrap").style.display="block";document.getElementById("generatedMeta").textContent="Created with "+body.model+" · Saved to CELVANI reference library";assets=assets.filter(asset=>!selectedAssets.has(asset.key));selectedAssets.clear();renderAssets();uploadStatus.textContent="Temporary references cleared after generation. Upload them again when needed.";designStatus.textContent="Design generated. Temporary source images were deleted after use."; }catch(error){assets=assets.filter(asset=>!selectedAssets.has(asset.key));selectedAssets.clear();renderAssets();uploadStatus.textContent="Temporary references cleared after the request.";designStatus.textContent=error.message;}finally{button.disabled=false;button.textContent="Generate / edit design";}});
 loadAssets();
