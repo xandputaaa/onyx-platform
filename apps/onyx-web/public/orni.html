@@ -104,7 +104,7 @@ textarea{width:100%;min-height:135px;resize:vertical;background:#0c0e10;border:1
     </div>
     <div class="panel" style="padding:16px">
       <div class="eyebrow">GENERATED MOTION</div>
-      <div class="gallery-result" id="generatedVideoWrap" style="display:none">
+      <img id="retroStill" alt="ORNI retro Blender preview" hidden style="width:100%;max-width:640px;border-radius:12px;margin:12px 0;border:1px solid var(--line)">\n      <div class="gallery-result" id="generatedVideoWrap" style="display:none">
         <video id="generatedVideo" controls playsinline style="width:100%;display:block;background:#050607"></video>
         <div class="creative-status" id="generatedVideoMeta" style="padding:10px"></div>
       </div>
@@ -182,7 +182,7 @@ fetch("/api/orni/reference-cinema").then(r=>r.json()).then(d=>{if(d.ok)videoStat
 document.getElementById("buildRetroScene").addEventListener("click",async()=>{
   const style=videoStyle.value==="ps2-cutscene"?"ps2":"ps1";
   const button=document.getElementById("buildRetroScene");button.disabled=true;videoStatus.textContent="Building an editable "+style.toUpperCase()+" scene and rendering a short MP4 in Blender…";
-  try{const r=await fetch("/api/orni/blender/scene/retro-cinema",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({style,duration:Number(videoDuration.value),aspectRatio:document.getElementById("videoRatio").value})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Blender retro scene failed");videoStatus.textContent="Created "+d.scene+" · "+d.frames+" frames. Loading finished MP4…";const video=document.getElementById("generatedVideo");video.src="/api/orni/blender/retro-video?ts="+Date.now();document.getElementById("generatedVideoWrap").style.display="block";document.getElementById("videoPlaceholder").style.display="none";document.getElementById("generatedVideoMeta").textContent="Blender · "+d.style+" · editable scene and MP4 rendered";video.load();videoStatus.textContent="Blender scene and MP4 rendered. Open the live Blender workspace to edit the scene.";
+  try{const r=await fetch("/api/orni/blender/scene/retro-cinema",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({style,duration:Number(videoDuration.value),aspectRatio:document.getElementById("videoRatio").value})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Blender retro scene failed");videoStatus.textContent="Created "+d.scene+" · "+d.frames+" frames. Loading finished MP4…";const video=document.getElementById("generatedVideo");video.src="/api/orni/blender/retro-video?ts="+Date.now();const still=document.getElementById("retroStill");still.src="/api/orni/blender/retro-preview?ts="+Date.now();still.hidden=false;document.getElementById("generatedVideoWrap").style.display="block";document.getElementById("videoPlaceholder").style.display="none";document.getElementById("generatedVideoMeta").textContent="Blender · "+d.style+" · editable scene and MP4 rendered";video.load();videoStatus.textContent="Blender scene and MP4 rendered. Open the live Blender workspace to edit the scene.";
   }catch(e){videoStatus.textContent=e.message;}finally{button.disabled=false;}
 });
 document.getElementById("sendCinemaMission").addEventListener("click",()=>{
