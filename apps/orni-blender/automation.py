@@ -394,7 +394,7 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
         scene.view_settings.dither_intensity=0.0 if ps1 else 0.5
     scene.render.image_settings.file_format="PNG"
     scene.render.filepath=str(OUT/"orni_retro_preview.png")
-    # PS1 gets a smooth game-camera push. PS2 gets three deliberate cutscene framings.
+    # PS1 gets a smooth game-camera push. PS2 gets five deliberate cutscene framings.
     if ps1:
         cam.location=(4.2,-7.8,3.35); cam.keyframe_insert(data_path="location",frame=1)
         cam.location=(3.35,-6.6,3.0); cam.keyframe_insert(data_path="location",frame=scene.frame_end)
