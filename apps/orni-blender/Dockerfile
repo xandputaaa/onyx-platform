@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /workspace
 COPY start.sh /usr/local/bin/orni-blender-start
+COPY automation.py /workspace/automation.py
 RUN chmod +x /usr/local/bin/orni-blender-start
 ENV DISPLAY=:1 LIBGL_ALWAYS_SOFTWARE=1
 EXPOSE 6080
