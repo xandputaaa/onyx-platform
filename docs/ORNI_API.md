@@ -44,7 +44,8 @@ Authorization: Bearer <ORNI_ACCESS_TOKEN>
 Content-Type: application/json
 
 {
-  "mission": "Evaluate the next CELVANI hoodie sample against the brand's product and quality standards."
+  "mission": "Evaluate the next CELVANI hoodie sample against the brand's product and quality standards.",
+  "requestId": "onyx-task-unique-id"
 }
 ```
 
@@ -54,7 +55,7 @@ Mission text must be a non-empty string of at most 6,000 characters.
 
 Successful responses contain:
 
-- `agent`, `domain`, `missionId`, `model`, `generatedAt`
+- `agent`, `domain`, `missionId`, `requestId` (echoed when supplied), `model`, `generatedAt`
 - `report.mission`
 - `report.findings[]`
 - `report.intelligence[]`
