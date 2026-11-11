@@ -495,7 +495,16 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
         raise RuntimeError("Blender did not save the editable retro scene.")
     if not video_file.is_file() or video_file.stat().st_size<1024:
         raise RuntimeError("Blender did not produce a valid retro MP4. Check FFmpeg support and render logs.")
-    return {"ok":True,"scene":"ORNI "+("PS1 low-poly" if ps1 else "PS2 cutscene")+" retro cinema","style":style,"blend":"/outputs/orni_retro_cinema.blend","preview":"/outputs/orni_retro_preview.png","video":"/outputs/orni_retro_cinema.mp4","frames":scene.frame_end,"fps":12,"durationSeconds":duration,"resolutionX":base_width,"resolutionY":base_height,"aspectRatio":aspect_ratio,"note":"Procedural proof-of-pipeline scene. Replace the placeholder character and set with approved CELVANI assets for production campaigns. PS2 mouth motion is a timing placeholder; optional on-screen dialogue caption is included, but no voice or audio is generated."}
+    probe=subprocess.run(["ffprobe","-v","error","-select_streams","v:0","-show_entries","stream=width,height,r_frame_rate","-show_entries","format=duration","-of","json",str(video_file)],check=True,capture_output=True,text=True,timeout=30)
+    probe_data=json.loads(probe.stdout)
+    stream=(probe_data.get("streams") or [{}])[0]
+    duration_probe=float((probe_data.get("format") or {}).get("duration",0))
+    if (stream.get("width"),stream.get("height"))!=(base_width*3,base_height*3) or stream.get("r_frame_rate")!="12/1":
+        raise RuntimeError("Retro MP4 dimensions or frame rate failed validation.")
+    if not duration-0.5<=duration_probe<=duration+0.5:
+        raise RuntimeError("Retro MP4 duration failed validation.")
+    subprocess.run(["ffmpeg","-v","error","-i",str(video_file),"-f","null","-"],check=True,capture_output=True,text=True,timeout=180)
+    return {"ok":True,"scene":"ORNI "+("PS1 low-poly" if ps1 else "PS2 cutscene")+" retro cinema","style":style,"blend":"/outputs/orni_retro_cinema.blend","preview":"/outputs/orni_retro_preview.png","video":"/outputs/orni_retro_cinema.mp4","frames":scene.frame_end,"fps":12,"durationSeconds":duration,"resolutionX":base_width*3,"resolutionY":base_height*3,"sourceResolutionX":base_width,"sourceResolutionY":base_height,"aspectRatio":aspect_ratio,"uvMappedMeshes":retro_uv_mesh_count,"decodeValidated":True,"note":"Procedural proof-of-pipeline scene with UV-mapped meshes and validated MP4 metadata/full decode. Replace placeholder character and set with approved CELVANI assets for campaigns. PS2 includes five-shot framing, mouth timing and shoulder-pivoted gestures; it still has no generated voice or audio."}
 
 
 JOBS=queue.Queue()
