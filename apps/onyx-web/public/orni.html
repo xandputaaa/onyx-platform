@@ -207,7 +207,6 @@ document.getElementById("buildRetroScene").addEventListener("click",async()=>{
     const d=await r.json();if(!r.ok)throw new Error(d.error||"Blender render failed");
     const videoUrl=videoPath+"?ts="+Date.now(),stillUrl=stillPath+"?ts="+Date.now();
     const video=document.getElementById("generatedVideo"),still=document.getElementById("retroStill");
-    video.src=videoUrl;still.src=stillUrl;still.hidden=false;
     document.getElementById("generatedVideoWrap").style.display="block";
     document.getElementById("videoPlaceholder").style.display="none";
     document.getElementById("generatedVideoMeta").textContent="Blender · "+d.style+" · "+(d.durationSeconds||"")+" sec · "+(d.frames||"")+" frames";
@@ -227,7 +226,7 @@ document.getElementById("buildRetroScene").addEventListener("click",async()=>{
       const done=()=>{if(--pending===0)resolve();};
       video.onloadedmetadata=done;video.onerror=()=>{if(!failed){failed=true;reject(new Error("The render completed, but the MP4 could not be loaded for preview."));}};
       still.onload=done;still.onerror=()=>{if(!failed){failed=true;reject(new Error("The render completed, but the PNG preview could not be loaded."));}};
-      video.load();
+      video.src=videoUrl;still.src=stillUrl;still.hidden=false;video.load();
     });
     videoStatus.textContent="Render complete. Preview is ready; save the original MP4, PNG still, or editable .blend below.";
   }catch(e){videoStatus.textContent=e.message;}
