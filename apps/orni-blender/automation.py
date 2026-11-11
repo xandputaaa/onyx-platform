@@ -86,7 +86,8 @@ def create_crash_woods_cinema():
     scene.world.color=(0.006,0.009,0.025)
     scene.view_settings.view_transform="Standard"
     scene.view_settings.look="Medium High Contrast"
-    scene.view_settings.dither_intensity=0.0
+    if hasattr(scene.view_settings,"dither_intensity"):
+        scene.view_settings.dither_intensity=0.0
     scene.render.image_settings.file_format="PNG"
     scene.render.resolution_percentage=100
 
@@ -288,7 +289,8 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
     scene.world.color=(0.025,0.025,0.035)
     scene.view_settings.view_transform="Standard"
     scene.view_settings.look="Medium High Contrast"
-    scene.view_settings.dither_intensity=0.0 if ps1 else 0.5
+    if hasattr(scene.view_settings,"dither_intensity"):
+        scene.view_settings.dither_intensity=0.0 if ps1 else 0.5
     scene.render.image_settings.file_format="PNG"
     scene.render.filepath=str(OUT/"orni_retro_preview.png")
     # PS1 gets a smooth game-camera push. PS2 gets three deliberate cutscene framings.
