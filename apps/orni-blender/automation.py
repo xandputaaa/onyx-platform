@@ -35,6 +35,47 @@ def set_compatible_eevee(scene):
             return engine
     raise RuntimeError("This Blender build supports neither Eevee Next nor Eevee.")
 
+def unwrap_scene_meshes():
+    """Create deliberate UVs for every mesh using Blender's native smart projection."""
+    meshes=[obj for obj in bpy.context.scene.objects if obj.type=="MESH"]
+    if not meshes:
+        return 0
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in meshes:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active=meshes[0]
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.smart_project(island_margin=0.025)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    return len(meshes)
+
+
+def apply_psx_pixel_texture(material, base_color, label, seed=0):
+    """Build a tiny deterministic 16x16 texture with nearest-neighbour sampling."""
+    if not material or not material.use_nodes:
+        return
+    image=bpy.data.images.new(label+" | 16px pixel texture",width=16,height=16,alpha=False)
+    pixels=[]
+    for y in range(16):
+        for x in range(16):
+            variation=0.84+(((x*11+y*7+seed*13)%9)/100.0)
+            band=0.94 if (x+y+seed)%7==0 else 1.0
+            shade=variation*band
+            pixels.extend((min(1.0,base_color[0]*shade),min(1.0,base_color[1]*shade),min(1.0,base_color[2]*shade),1.0))
+    image.pixels.foreach_set(pixels)
+    image.pack()
+    nodes=material.node_tree.nodes
+    shader=nodes.get("Principled BSDF")
+    if shader:
+        tex=nodes.new("ShaderNodeTexImage")
+        tex.name=label+" | nearest-neighbour"
+        tex.image=image
+        tex.interpolation="Closest"
+        tex.extension="REPEAT"
+        material.node_tree.links.new(tex.outputs["Color"],shader.inputs["Base Color"])
+
+
 def create_hoodie():
     clear_scene()
     black=mat("CELVANI | deep black fleece",(0.012,0.014,0.018),0.0,0.82)
@@ -103,6 +144,10 @@ def create_crash_woods_cinema():
     joint=mat("Crash dummy | dark joints",(0.12,0.13,0.14),0,0.9)
     moonmat=mat("Moon | pale ivory",(0.78,0.82,0.91),0,1)
     headlight=mat("Headlights | pale yellow",(0.95,0.78,0.42),0,0.5)
+    # Native, packed 16x16 pixel textures for the low-poly PSX palette.
+    for index,(material,color) in enumerate([(asphalt,(0.018,0.025,0.04)),(dirt,(0.025,0.045,0.035)),(bark,(0.12,0.075,0.045)),(pine,(0.025,0.10,0.065)),(carpaint,(0.34,0.045,0.035)),(glass,(0.025,0.075,0.12)),(rubber,(0.012,0.014,0.018)),(metal,(0.78,0.76,0.66)),(joint,(0.12,0.13,0.14)),(moonmat,(0.78,0.82,0.91)),(headlight,(0.95,0.78,0.42))]):
+        apply_psx_pixel_texture(material,color,material.name,index)
+
 
     cube("Forest ground",(0,3,-0.22),(70,90,0.4),dirt,0)
     cube("Narrow forest road",(0,-7,0),(7,55,0.12),asphalt,0)
@@ -233,6 +278,8 @@ def create_crash_woods_cinema():
         if obj.animation_data and obj.animation_data.action:
             for fc in obj.animation_data.action.fcurves:
                 for kp in fc.keyframe_points: kp.interpolation="LINEAR"
+    set_job_status(stage="UV unwrapping and pixel texturing", progress=15)
+    uv_mesh_count=unwrap_scene_meshes()
     scene.render.filepath=str(OUT/"orni_crash_woods_preview.png")
     scene.frame_set(1)
     set_job_status(stage="Saving editable Blender project", progress=18)
@@ -255,7 +302,7 @@ def create_crash_woods_cinema():
     if not video_file.is_file() or video_file.stat().st_size<1024: raise RuntimeError("15-second crash-woods MP4 was not created.")
     set_job_status(stage="Validating MP4, preview and editable scene", progress=98)
     if not (OUT/"orni_crash_woods.blend").is_file() or not (OUT/"orni_crash_woods_preview.png").is_file(): raise RuntimeError("One or more required Blender deliverables are missing.")
-    return {"ok":True,"scene":"ORNI PS1 crash dummy in the woods","style":"ps1-crash-woods","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"resolutionX":320,"resolutionY":180,"aspectRatio":"16:9","note":"Procedural low-poly first pass; verify character exit, walk and moon-pan timing in the rendered video."}
+    return {"ok":True,"scene":"ORNI PS1 crash dummy in the woods","style":"ps1-crash-woods","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"resolutionX":320,"resolutionY":180,"aspectRatio":"16:9","uvMappedMeshes":uv_mesh_count,"pixelTextureResolution":"16x16 per material","note":"Low-poly scene with native UV smart projection and packed 16x16 nearest-sampled material textures; rendered story beats still require playback QA."}
 
 
 def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""):
