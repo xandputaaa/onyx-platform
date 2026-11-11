@@ -128,11 +128,12 @@ async function connectBlender(){
     const d=await response.json();
     workerState.textContent="WORKER: "+String(d.state||"unknown").replaceAll("_"," ").toUpperCase();
     const viewport=document.getElementById("viewport");
-    if(d.viewerUrl){
-      if(blenderFrameUrl!==d.viewerUrl){
+    const viewerUrl=d.viewerUrl?d.viewerUrl.replace(/\/vnc\.html(?:\?.*)?$/,"/orni.html"):"";
+    if(viewerUrl){
+      if(blenderFrameUrl!==viewerUrl){
         const frame=document.createElement("iframe");
         frame.className="remote-view";frame.title="ORNI Blender remote desktop";
-        frame.src=d.viewerUrl;frame.allow="fullscreen; clipboard-read; clipboard-write";
+        frame.src=viewerUrl;frame.allow="fullscreen; clipboard-read; clipboard-write";
         frame.referrerPolicy="no-referrer";
         viewport.classList.add("live");viewport.replaceChildren(frame);blenderFrameUrl=d.viewerUrl;
       }
