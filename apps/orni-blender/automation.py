@@ -1,4 +1,4 @@
-import bpy, json, os, threading, queue, subprocess, shutil, math
+import bpy, json, os, threading, queue, subprocess, shutil, math, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from mathutils import Vector
@@ -78,6 +78,7 @@ def create_hoodie():
 
 def create_crash_woods_cinema():
     """15-second PS1-style crash-dummy short: crash, exit, forest walk, moon pan."""
+    set_job_status(stage="Building forest, car and character", progress=3)
     clear_scene()
     scene=bpy.context.scene
     set_compatible_eevee(scene)
@@ -180,6 +181,7 @@ def create_crash_woods_cinema():
         bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1,radius=0.055,location=(x,y,z))
         star=bpy.context.object; star.name="Pixel-star"; star.data.materials.append(moonmat)
 
+    set_job_status(stage="Lighting and camera choreography", progress=12)
     # Cold moonlight and weak warm headlamp spill.
     bpy.ops.object.light_add(type="SUN",location=(0,0,12))
     sun=bpy.context.object; sun.name="Moonlit forest"; sun.data.energy=0.65; sun.data.color=(0.42,0.55,1.0)
@@ -211,20 +213,26 @@ def create_crash_woods_cinema():
                 for kp in fc.keyframe_points: kp.interpolation="LINEAR"
     scene.render.filepath=str(OUT/"orni_crash_woods_preview.png")
     scene.frame_set(1)
+    set_job_status(stage="Saving editable Blender project", progress=18)
     bpy.ops.wm.save_as_mainfile(filepath=str(OUT/"orni_crash_woods.blend"))
+    set_job_status(stage="Rendering cinematic preview", progress=22)
     bpy.ops.render.render(write_still=True)
     frames_dir=OUT/"orni_crash_woods_frames"
     if frames_dir.exists(): shutil.rmtree(frames_dir,ignore_errors=True)
     frames_dir.mkdir(parents=True,exist_ok=True)
     scene.render.filepath=str(frames_dir/"frame_")
+    set_job_status(stage="Rendering animation frames", progress=25, frame=0, frames=scene.frame_end)
     bpy.ops.render.render(animation=True)
     video_file=OUT/"orni_crash_woods_15s.mp4"
+    set_job_status(stage="Encoding MP4 with FFmpeg", progress=92)
     try:
         subprocess.run(["ffmpeg","-y","-framerate","12","-i",str(frames_dir/"frame_%04d.png"),"-c:v","libx264","-pix_fmt","yuv420p","-crf","21","-preset","ultrafast","-movflags","+faststart",str(video_file)],check=True,capture_output=True,text=True,timeout=480)
     except FileNotFoundError: raise RuntimeError("FFmpeg is not installed in the Blender worker.")
     except subprocess.CalledProcessError as exc: raise RuntimeError("FFmpeg encoding failed: "+(exc.stderr or "unknown error")[-1200:])
     finally: shutil.rmtree(frames_dir,ignore_errors=True)
     if not video_file.is_file() or video_file.stat().st_size<1024: raise RuntimeError("15-second crash-woods MP4 was not created.")
+    set_job_status(stage="Validating MP4, preview and editable scene", progress=98)
+    if not (OUT/"orni_crash_woods.blend").is_file() or not (OUT/"orni_crash_woods_preview.png").is_file(): raise RuntimeError("One or more required Blender deliverables are missing.")
     return {"ok":True,"scene":"ORNI PS1 crash dummy in the woods","style":"ps1-crash-woods","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"resolutionX":320,"resolutionY":180,"aspectRatio":"16:9","note":"Procedural low-poly first pass; verify character exit, walk and moon-pan timing in the rendered video."}
 
 
@@ -371,6 +379,27 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
 
 
 JOBS=queue.Queue()
+JOB_LOCK=threading.Lock()
+JOB_STATUS={"status":"idle","stage":"Waiting for a production brief","progress":0,"frame":0,"frames":0,"error":None,"updatedAt":time.time()}
+
+def set_job_status(**updates):
+    with JOB_LOCK:
+        JOB_STATUS.update(updates)
+        JOB_STATUS["updatedAt"]=time.time()
+
+@bpy.app.handlers.persistent
+def track_render_frame(scene):
+    with JOB_LOCK:
+        if JOB_STATUS.get("status")=="running" and JOB_STATUS.get("stage")=="Rendering animation frames":
+            current=max(0,int(scene.frame_current)-int(scene.frame_start)+1)
+            total=max(1,int(scene.frame_end)-int(scene.frame_start)+1)
+            JOB_STATUS["frame"]=current
+            JOB_STATUS["frames"]=total
+            JOB_STATUS["progress"]=min(90,25+int(65*current/total))
+            JOB_STATUS["updatedAt"]=time.time()
+
+if track_render_frame not in bpy.app.handlers.render_post:
+    bpy.app.handlers.render_post.append(track_render_frame)
 
 def process_jobs():
     try:
@@ -378,6 +407,7 @@ def process_jobs():
     except queue.Empty:
         return 0.15
     try:
+        set_job_status(status="running",stage="Preparing Blender scene",progress=1,frame=0,frames=0,error=None)
         if job["action"]=="hoodie":
             job["result"]=create_hoodie()
         elif job["action"]=="retro":
@@ -391,7 +421,10 @@ def process_jobs():
             job["result"]={"error":"unknown_action"}
     except Exception as e:
         job["result"]={"error":str(e)}
+        set_job_status(status="failed",stage="Production failed",error=str(e),progress=0)
     finally:
+        if job["result"] and job["result"].get("ok"):
+            set_job_status(status="complete",stage="All deliverables verified",progress=100,error=None)
         job["done"].set()
     return 0.05
 
@@ -401,6 +434,9 @@ class Handler(BaseHTTPRequestHandler):
     def reply(self, code, data):
         raw=json.dumps(data).encode(); self.send_response(code); self.send_header("Content-Type","application/json"); self.send_header("Content-Length",str(len(raw))); self.end_headers(); self.wfile.write(raw)
     def do_GET(self):
+        if self.path=="/job-status":
+            if not TOKEN or self.headers.get("Authorization")!="Bearer "+TOKEN: return self.reply(401,{"error":"unauthorized"})
+            with JOB_LOCK: return self.reply(200,dict(JOB_STATUS))
         if self.path=="/health": return self.reply(200,{"ok":True,"service":"orni-blender-control","blender":bpy.app.version_string})
         if self.path=="/outputs": return self.reply(200,{"files":[p.name for p in OUT.iterdir() if p.is_file()]})
         if self.path in ("/outputs/celvani_hoodie_blockout.png","/outputs/celvani_hoodie_blockout.blend","/outputs/celvani_render.png","/outputs/orni_retro_preview.png","/outputs/orni_retro_cinema.blend","/outputs/orni_retro_cinema.mp4","/outputs/orni_crash_woods_preview.png","/outputs/orni_crash_woods.blend","/outputs/orni_crash_woods_15s.mp4"):
@@ -419,9 +455,12 @@ class Handler(BaseHTTPRequestHandler):
         body=json.loads(self.rfile.read(n) or b"{}")
         action={"/api/scene/celvani-hoodie":"hoodie","/api/scene/retro-cinema":"retro","/api/render":"render"}.get(self.path)
         if not action: return self.reply(404,{"error":"unknown_action"})
+        set_job_status(status="queued",stage="Waiting for Blender render slot",progress=0,frame=0,frames=0,error=None)
         job={"action":action,"style":body.get("style","ps1") if isinstance(body,dict) else "ps1","duration":body.get("duration",5) if isinstance(body,dict) else 5,"aspect_ratio":body.get("aspectRatio","16:9") if isinstance(body,dict) else "16:9","caption":str(body.get("caption",""))[:120] if isinstance(body,dict) else "","done":threading.Event(),"result":None}
         JOBS.put(job)
-        if not job["done"].wait(540): return self.reply(504,{"error":"Blender operation timed out"})
+        if not job["done"].wait(540):
+            set_job_status(status="failed",stage="Render timed out",error="Blender operation timed out",progress=0)
+            return self.reply(504,{"error":"Blender operation timed out"})
         result=job["result"] or {"error":"empty_result"}
         return self.reply(200 if result.get("ok") else 500,result)
     def log_message(self,*args): pass
