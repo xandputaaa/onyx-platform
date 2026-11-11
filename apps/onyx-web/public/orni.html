@@ -179,7 +179,8 @@ document.getElementById("generateDesign").addEventListener("click",async()=>{con
 loadAssets();
 
 const videoStyle=document.getElementById("videoStyle"),videoDuration=document.getElementById("videoDuration"),videoStatus=document.getElementById("videoStatus");
-fetch("/api/orni/reference-cinema").then(r=>r.json()).then(d=>{if(d.ok)videoStatus.textContent="Reference Cinema "+d.playbookVersion+" · "+d.engine+" · free-only";}).catch(()=>{});\n
+fetch("/api/orni/reference-cinema").then(r=>r.json()).then(d=>{if(d.ok)videoStatus.textContent="Reference Cinema "+d.playbookVersion+" · "+d.engine+" · free-only";}).catch(()=>{});
+
 document.getElementById("buildRetroScene").addEventListener("click",async()=>{
   const style=videoStyle.value==="ps2-cutscene"?"ps2":"ps1";
   const button=document.getElementById("buildRetroScene");button.disabled=true;videoStatus.textContent="Building an editable "+style.toUpperCase()+" scene and rendering a short MP4 in Blender…";
@@ -193,6 +194,7 @@ document.getElementById("sendCinemaMission").addEventListener("click",()=>{
   document.getElementById("mission").value=brief;document.getElementById("missions").scrollIntoView({behavior:"smooth"});
   document.getElementById("hint").textContent="Production brief prepared with the selected ORNI style preset. Submit it for a structured production plan.";
 });
-// Paid video-provider handler intentionally removed in free-only mode.\nconst send=document.getElementById("send"),hint=document.getElementById("hint"),result=document.getElementById("result");
+// Paid video-provider handler intentionally removed in free-only mode.
+const send=document.getElementById("send"),hint=document.getElementById("hint"),result=document.getElementById("result");
 send.addEventListener("click",async()=>{const mission=document.getElementById("mission").value.trim();if(!mission){hint.textContent="Enter a mission first.";return;}send.disabled=true;send.textContent="ORNI is working…";hint.textContent="Routing through ONYX.";result.style.display="none";try{const r=await fetch("/api/orni/mission",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mission})});const body=await r.json();result.textContent=JSON.stringify(body,null,2);result.style.display="block";hint.textContent=r.ok?"Mission report received. Review recommendations and assumptions.":(r.status===429||body.category==="provider_rate_limited"?"Groq rate or quota limit. Check Groq Console billing, usage and rate limits for the API key configured on ORNI.":"Mission failed. Review the diagnostic response.");}catch{hint.textContent="Could not reach ONYX. Try again shortly.";}finally{send.disabled=false;send.textContent="Send mission to ORNI";}});
 </script></body></html>
