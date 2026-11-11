@@ -1,6 +1,7 @@
-import bpy, json, os, threading
+import bpy, json, os, threading, queue
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from mathutils import Vector
 
 TOKEN = os.environ.get("ORNI_BLENDER_TOKEN", "")
 OUT = Path("/workspace/outputs")
@@ -50,11 +51,11 @@ def create_hoodie():
     cube("Studio floor",(0,0,-0.12),(200,200,0.2),floor,0)
     bpy.ops.object.camera_add(location=(6,-10,6))
     cam=bpy.context.object; cam.name="CELVANI product camera"
-    direction=bpy.mathutils.Vector((0,0,2.3))-cam.location; cam.rotation_euler=direction.to_track_quat("-Z","Y").to_euler()
+    direction=Vector((0,0,2.3))-cam.location; cam.rotation_euler=direction.to_track_quat("-Z","Y").to_euler()
     cam.data.lens=55; bpy.context.scene.camera=cam
     for name,loc,power,size in [("Key softbox",(1,-5,7),1100,5),("Fill softbox",(-5,-2,4),700,4),("Rim light",(2,4,6),1300,3)]:
         bpy.ops.object.light_add(type="AREA", location=loc); l=bpy.context.object; l.name=name; l.data.energy=power; l.data.shape="DISK"; l.data.size=size
-        d=bpy.mathutils.Vector((0,0,2.4))-l.location; l.rotation_euler=d.to_track_quat("-Z","Y").to_euler()
+        d=Vector((0,0,2.4))-l.location; l.rotation_euler=d.to_track_quat("-Z","Y").to_euler()
     scene=bpy.context.scene; scene.render.engine="BLENDER_EEVEE_NEXT"
     scene.render.resolution_x=1200; scene.render.resolution_y=1200; scene.render.resolution_percentage=100
     scene.world.color=(0.12,0.12,0.12); scene.camera.data.lens=55
@@ -63,6 +64,31 @@ def create_hoodie():
     scene.view_settings.view_transform="Standard"
     bpy.ops.wm.save_as_mainfile(filepath=str(OUT/"celvani_hoodie_blockout.blend"))
     return {"ok":True,"scene":"CELVANI oversized hoodie blockout","blend":"/outputs/celvani_hoodie_blockout.blend","render":"/outputs/celvani_hoodie_blockout.png","note":"Concept blockout only; not a manufacturing-accurate garment or approved logo."}
+
+JOBS=queue.Queue()
+
+def process_jobs():
+    try:
+        job=JOBS.get_nowait()
+    except queue.Empty:
+        return 0.15
+    try:
+        if job["action"]=="hoodie":
+            job["result"]=create_hoodie()
+        elif job["action"]=="render":
+            scene=bpy.context.scene
+            scene.render.filepath=str(OUT/"celvani_render.png")
+            bpy.ops.render.render(write_still=True)
+            job["result"]={"ok":True,"render":"/outputs/celvani_render.png"}
+        else:
+            job["result"]={"error":"unknown_action"}
+    except Exception as e:
+        job["result"]={"error":str(e)}
+    finally:
+        job["done"].set()
+    return 0.05
+
+bpy.app.timers.register(process_jobs, first_interval=0.2, persistent=True)
 
 class Handler(BaseHTTPRequestHandler):
     def reply(self, code, data):
@@ -76,15 +102,13 @@ class Handler(BaseHTTPRequestHandler):
         n=int(self.headers.get("Content-Length","0"))
         if n>4096: return self.reply(413,{"error":"payload_too_large"})
         body=json.loads(self.rfile.read(n) or b"{}")
-        if self.path=="/api/scene/celvani-hoodie":
-            try: return self.reply(200,create_hoodie())
-            except Exception as e: return self.reply(500,{"error":str(e)})
-        if self.path=="/api/render":
-            try:
-                scene=bpy.context.scene; scene.render.filepath=str(OUT/"celvani_render.png"); bpy.ops.render.render(write_still=True)
-                return self.reply(200,{"ok":True,"render":"/outputs/celvani_render.png"})
-            except Exception as e: return self.reply(500,{"error":str(e)})
-        return self.reply(404,{"error":"unknown_action"})
+        action={"/api/scene/celvani-hoodie":"hoodie","/api/render":"render"}.get(self.path)
+        if not action: return self.reply(404,{"error":"unknown_action"})
+        job={"action":action,"done":threading.Event(),"result":None}
+        JOBS.put(job)
+        if not job["done"].wait(120): return self.reply(504,{"error":"Blender operation timed out"})
+        result=job["result"] or {"error":"empty_result"}
+        return self.reply(200 if result.get("ok") else 500,result)
     def log_message(self,*args): pass
 
 def serve():
