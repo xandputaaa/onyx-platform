@@ -78,7 +78,7 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
           const obj=await s3.send(new GetObjectCommand({Bucket:process.env.ASSETS_S3_BUCKET,Key:key}));
           imageUrls.push((await signedAsset(s3,key,key.split("/").pop(),obj.ContentType||"image/png")).url);
         }
-        const workerUrl=process.env.CLOUDFLARE_WORKER_URL.replace(/\\/+$/,"");
+        const workerUrl=process.env.CLOUDFLARE_WORKER_URL.replace(/\/+$/,"");
         const response=await fetch(workerUrl+"/image",{method:"POST",headers:{"Authorization":"Bearer "+process.env.ORNI_WORKER_TOKEN,"Content-Type":"application/json"},body:JSON.stringify({prompt:fullPrompt,images:imageUrls,resolution:"1k"}),signal:AbortSignal.timeout(240000)});
         const result=await response.json().catch(()=>({}));
         if(!response.ok||!result.output?.url)return res.status(response.status===429?429:502).json({error:result.error||"Cloudflare FLUX image generation failed.",provider:"cloudflare"});
@@ -139,7 +139,7 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
   });
 
   app.post("/api/orni/videos/generate",requireAgentToken,async(req,res)=>{
-    const workerUrl=process.env.CLOUDFLARE_WORKER_URL?.replace(/\\/+$/,"");
+    const workerUrl=process.env.CLOUDFLARE_WORKER_URL?.replace(/\/+$/,"");
     const workerToken=process.env.ORNI_WORKER_TOKEN;
     const s3=getStorage();
     if(!workerUrl||!workerToken)return res.status(503).json({error:"Configure CLOUDFLARE_WORKER_URL and ORNI_WORKER_TOKEN on the ORNI API Railway service."});
