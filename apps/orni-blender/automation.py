@@ -63,6 +63,7 @@ def create_hoodie():
     scene.render.filepath=str(OUT/"celvani_hoodie_blockout.png")
     scene.view_settings.view_transform="Standard"
     bpy.ops.wm.save_as_mainfile(filepath=str(OUT/"celvani_hoodie_blockout.blend"))
+    bpy.ops.render.render(write_still=True)
     return {"ok":True,"scene":"CELVANI oversized hoodie blockout","blend":"/outputs/celvani_hoodie_blockout.blend","render":"/outputs/celvani_hoodie_blockout.png","note":"Concept blockout only; not a manufacturing-accurate garment or approved logo."}
 
 JOBS=queue.Queue()
