@@ -144,6 +144,7 @@ app.get("/api/orni/assets", (req, res) => orniForward(req, res, "/api/orni/asset
 app.post("/api/orni/assets", (req, res) => orniForward(req, res, "/api/orni/assets", "POST"));
 app.post("/api/orni/designs/generate", (req, res) => orniForward(req, res, "/api/orni/designs/generate", "POST"));
 app.post("/api/orni/videos/generate", (req, res) => orniForward(req, res, "/api/orni/videos/generate", "POST"));
+app.get("/api/orni/blender/job-status", (req, res) => orniForward(req, res, "/api/orni/blender/job-status"));
 app.get("/api/orni/blender/status", (req, res) => orniForward(req, res, "/api/orni/blender/status"));
 app.post("/api/orni/blender/scene/celvani-hoodie", (req, res) => orniForward(req, res, "/api/orni/blender/scene/celvani-hoodie", "POST"));
 
