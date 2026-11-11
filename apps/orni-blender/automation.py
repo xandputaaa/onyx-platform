@@ -509,7 +509,7 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
 
 JOBS=queue.Queue()
 JOB_LOCK=threading.Lock()
-JOB_STATUS={"status":"idle","stage":"Waiting for a production brief","progress":0,"frame":0,"frames":0,"error":None,"updatedAt":time.time()}
+JOB_STATUS={"status":"idle","stage":"Waiting for a production brief","progress":0,"frame":0,"frames":0,"error":None,"result":None,"updatedAt":time.time()}
 
 def set_job_status(**updates):
     with JOB_LOCK:
@@ -550,10 +550,10 @@ def process_jobs():
             job["result"]={"error":"unknown_action"}
     except Exception as e:
         job["result"]={"error":str(e)}
-        set_job_status(status="failed",stage="Production failed",error=str(e),progress=0)
+        set_job_status(status="failed",stage="Production failed",error=str(e),progress=0,result=job["result"])
     finally:
         if job["result"] and job["result"].get("ok"):
-            set_job_status(status="complete",stage="All deliverables verified",progress=100,error=None)
+            set_job_status(status="complete",stage="Files validated · human review pending",progress=100,error=None,result=job["result"])
         job["done"].set()
     return 0.05
 
@@ -584,7 +584,10 @@ class Handler(BaseHTTPRequestHandler):
         body=json.loads(self.rfile.read(n) or b"{}")
         action={"/api/scene/celvani-hoodie":"hoodie","/api/scene/retro-cinema":"retro","/api/render":"render"}.get(self.path)
         if not action: return self.reply(404,{"error":"unknown_action"})
-        set_job_status(status="queued",stage="Waiting for Blender render slot",progress=0,frame=0,frames=0,error=None)
+        with JOB_LOCK:
+            if JOB_STATUS.get("status") in ("queued","running"):
+                return self.reply(409,{"error":"A Blender job is already running. Wait for it to finish before starting another."})
+            JOB_STATUS.update(status="queued",stage="Waiting for Blender render slot",progress=0,frame=0,frames=0,error=None,result=None,updatedAt=time.time())
         job={"action":action,"style":body.get("style","ps1") if isinstance(body,dict) else "ps1","duration":body.get("duration",5) if isinstance(body,dict) else 5,"aspect_ratio":body.get("aspectRatio","16:9") if isinstance(body,dict) else "16:9","caption":str(body.get("caption",""))[:120] if isinstance(body,dict) else "","done":threading.Event(),"result":None}
         JOBS.put(job)
         # Accept immediately. Blender renders in its timer-driven queue while
