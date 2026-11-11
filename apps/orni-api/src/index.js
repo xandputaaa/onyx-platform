@@ -223,9 +223,9 @@ app.get("/api/orni/status", (_req, res) => {
     capabilities: {
       authenticatedMissionEndpoint: Boolean(process.env.ORNI_ACCESS_TOKEN && process.env.GROQ_API_KEY),
       celvaniIntelligence: "Groq model-assisted analysis; live research integration not connected",
-      creativeStudio: "planned",
-      blenderAutomation: "planned",
-      visualWorkspaceStreaming: "planned",
+      creativeStudio: "Reference Cinema playbook and procedural retro scene builder enabled",
+      blenderAutomation: Boolean(process.env.ORNI_BLENDER_API_URL && process.env.ORNI_BLENDER_TOKEN) ? "connected" : "not_configured",
+      visualWorkspaceStreaming: "noVNC viewer configured; live session depends on Blender worker availability",
       shopifyIntegration: "planned",
       onyxMessaging: "API contract ready; ONYX callback not connected"
     },
