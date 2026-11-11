@@ -248,12 +248,12 @@ document.getElementById("buildRetroScene").addEventListener("click",async()=>{
     const r=await fetch("/api/orni/blender/scene/retro-cinema",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({style,duration:crash?15:Number(videoDuration.value),aspectRatio:crash?"16:9":document.getElementById("videoRatio").value,caption:document.getElementById("videoDialogue").value.trim()})});
     const accepted=await r.json();if(!r.ok)throw new Error(accepted.error||"Blender render could not be queued.");
     videoStatus.textContent="Blender accepted the job. Rendering continues in the background…";
-    await pollRenderUntilDone();
+    const result=await pollRenderUntilDone();
     const videoUrl=videoPath+"?ts="+Date.now(),stillUrl=stillPath+"?ts="+Date.now();
     const video=document.getElementById("generatedVideo"),still=document.getElementById("retroStill");
     document.getElementById("generatedVideoWrap").style.display="block";
     document.getElementById("videoPlaceholder").style.display="none";
-    document.getElementById("generatedVideoMeta").textContent="Blender · "+style+" · "+(crash?15:Number(videoDuration.value))+" sec";
+    document.getElementById("generatedVideoMeta").textContent="Blender · "+(result.scene||style)+" · "+(result.durationSeconds|| (crash?15:Number(videoDuration.value)))+" sec · "+(result.frames||"")+" frames";
     const savePanel=document.getElementById("renderSavePanel");
     document.getElementById("saveVideo").href=videoPath;
     document.getElementById("saveVideo").download=crash?"ORNI-crash-woods-15s.mp4":"ORNI-retro-cinema.mp4";
@@ -261,9 +261,9 @@ document.getElementById("buildRetroScene").addEventListener("click",async()=>{
     document.getElementById("saveStill").download=crash?"ORNI-crash-woods-preview.png":"ORNI-retro-preview.png";
     document.getElementById("saveBlend").href=blendPath;
     document.getElementById("saveBlend").download=crash?"ORNI-crash-woods.blend":"ORNI-retro-cinema.blend";
-    const width=crash?960:style==="ps2"?1440:960;
-    const height=crash?540:style==="ps2"?810:540;
-    document.getElementById("renderDimensions").textContent="UPSCALED OUTPUT · "+width+" × "+height+" px · 12 FPS · "+(crash?15:Number(videoDuration.value))+" sec · 16:9";
+    const width=result.resolutionX||960;
+    const height=result.resolutionY||540;
+    document.getElementById("renderDimensions").textContent="VALIDATED OUTPUT · "+width+" × "+height+" px · "+(result.fps||12)+" FPS · "+(result.durationSeconds||"")+" sec · "+(result.aspectRatio||"16:9");
     savePanel.hidden=false;
     await new Promise((resolve,reject)=>{
       let pending=2,failed=false;
@@ -272,7 +272,7 @@ document.getElementById("buildRetroScene").addEventListener("click",async()=>{
       still.onload=done;still.onerror=()=>{if(!failed){failed=true;reject(new Error("The PNG was created, but its preview could not be loaded. Use Save PNG to download it."));}};
       video.src=videoUrl;still.src=stillUrl;still.hidden=false;video.load();
     });
-    videoStatus.textContent="Render complete. Preview is ready; save the original MP4, PNG still, or editable .blend below.";
+    videoStatus.textContent="Render files created and machine-validated. "+(result.note||"Human playback review is still required before final approval.");
   }catch(e){videoStatus.textContent=e.message;progressMeta.textContent="Production status: "+e.message;}
   finally{button.disabled=false;}
 });
