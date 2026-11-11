@@ -57,7 +57,7 @@ app.get("/api/orni/blender/status", async (_req,res) => {
   try {
     const r=await fetch(`${orniBase}/api/orni/blender/status`,{headers:{"Authorization":`Bearer ${process.env.ORNI_ACCESS_TOKEN}`},signal:AbortSignal.timeout(6000)});
     const body=await r.json().catch(()=>({}));
-    if(body.connected) body.viewerUrl="https://orni-blender-production.up.railway.app/vnc.html?autoconnect=true&resize=remote&path=websockify";
+    if(body.connected) body.viewerUrl="https://orni-blender-production.up.railway.app/orni.html";
     return res.status(r.status).json(body);
   } catch { return res.status(502).json({connected:false,state:"unreachable",viewerUrl:null,message:"Could not reach the Blender control service."}); }
 });
