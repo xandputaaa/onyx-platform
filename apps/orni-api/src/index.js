@@ -20,6 +20,50 @@ app.get("/health", (_req, res) => {
   });
 });
 
+app.get("/api/orni/profile", (_req, res) => {
+  res.status(200).json({
+    agent: "ORNI",
+    parent: "ONYX",
+    domain: "CELVANI",
+    role: "CELVANI fashion-house specialist",
+    mission: "Protect and grow CELVANI as a credible minimalist luxury fashion house.",
+    scope: [
+      "brand strategy and identity protection",
+      "creative direction and product development",
+      "fashion, competitor and cultural intelligence",
+      "supplier, manufacturing and quality research",
+      "pricing, margin and commercial analysis",
+      "campaign, social and CELVANI partnership research",
+      "Shopify operations and reporting when connected"
+    ],
+    exclusions: [
+      "personal creator management unrelated to CELVANI",
+      "acting as the user's primary assistant",
+      "publishing, purchasing, messaging or making financial commitments without approval"
+    ],
+    operatingPrinciples: [
+      "quality and long-term brand equity over the cheapest option",
+      "minimalist luxury identity over short-lived attention",
+      "evidence-led recommendations with uncertainty stated",
+      "challenge decisions that create avoidable brand, quality or financial risk",
+      "request approval before external or irreversible actions"
+    ],
+    reporting: {
+      recipient: "ONYX",
+      requiredFields: [
+        "mission",
+        "findings",
+        "intelligence",
+        "opportunities",
+        "risks",
+        "recommendation",
+        "approvalRequired"
+      ]
+    },
+    executionState: "profile-defined; connected capabilities are not implied"
+  });
+});
+
 app.get("/api/orni/status", (_req, res) => {
   res.status(200).json({
     agent: "ORNI",
