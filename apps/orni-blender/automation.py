@@ -1,5 +1,5 @@
 import bpy, json, os, threading, queue, subprocess, shutil, math, time
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from mathutils import Vector
 
@@ -595,6 +595,6 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args): pass
 
 def serve():
-    HTTPServer(("0.0.0.0",8765),Handler).serve_forever()
+    ThreadingHTTPServer(("0.0.0.0",8765),Handler).serve_forever()
 threading.Thread(target=serve,daemon=True).start()
 print("ORNI Blender control API listening on 8765")
