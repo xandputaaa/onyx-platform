@@ -103,6 +103,7 @@ textarea{width:100%;min-height:135px;resize:vertical;background:#0c0e10;border:1
       <textarea class="creative-prompt" id="videoPrompt" maxlength="26000" placeholder="Example: A cinematic CELVANI campaign film. A model in the oversized black hoodie walks through a stark concrete gallery. Slow tracking camera, precise garment movement, restrained luxury lighting, detailed fabric texture."></textarea>
       <div class="creative-actions"><button id="generateVideo" disabled title="Paid video APIs are disabled">AI video disabled · free mode</button><button id="buildRetroScene" type="button" style="background:#24292e;color:#e7e9eb">Build in Blender</button><button id="sendCinemaMission" type="button" style="background:#24292e;color:#e7e9eb">Send production brief to ORNI</button></div>
       <div class="creative-status" id="videoStatus">Free-only · Blender + Python + FFmpeg</div>
+      <div id="renderProgressWrap" hidden style="margin-top:12px"><div style="height:6px;background:#292e34;border-radius:99px;overflow:hidden"><div id="renderProgressFill" style="height:100%;width:0%;background:#e7e9eb;border-radius:99px;transition:width .35s ease"></div></div><div id="renderProgressMeta" class="creative-status" style="padding-top:7px">Waiting for Blender…</div></div>
     </div>
     <div class="panel" style="padding:16px">
       <div class="eyebrow">GENERATED MOTION</div>
@@ -200,8 +201,22 @@ document.getElementById("buildRetroScene").addEventListener("click",async()=>{
   const stillPath=crash?"/api/orni/blender/crash-woods-preview":"/api/orni/blender/retro-preview";
   const blendPath=crash?"/api/orni/blender/crash-woods-blend":"/api/orni/blender/retro-blend";
   button.disabled=true;
-  videoStatus.textContent="Building the editable "+style.toUpperCase()+" scene and rendering in Blender. Keep this page open…";
+  videoStatus.textContent="Sending the production brief to Blender…";
+  const progressWrap=document.getElementById("renderProgressWrap"),progressFill=document.getElementById("renderProgressFill"),progressMeta=document.getElementById("renderProgressMeta");
+  progressWrap.hidden=false;progressFill.style.width="0%";progressMeta.textContent="Queued for Blender";
   document.getElementById("renderSavePanel").hidden=true;
+  const progressTimer=setInterval(async()=>{
+    try{
+      const response=await fetch("/api/orni/blender/job-status",{cache:"no-store"});
+      const state=await response.json();
+      if(!response.ok)return;
+      const percent=Math.max(0,Math.min(100,Number(state.progress)||0));
+      progressFill.style.width=percent+"%";
+      const frame=state.frames?(" · frame "+state.frame+"/"+state.frames):"";
+      progressMeta.textContent=(state.stage||"Working")+" · "+percent+"%"+frame;
+      if(state.error)progressMeta.textContent+=" · "+state.error;
+    }catch{}
+  },1000);
   try{
     const r=await fetch("/api/orni/blender/scene/retro-cinema",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({style,duration:crash?15:Number(videoDuration.value),aspectRatio:crash?"16:9":document.getElementById("videoRatio").value,caption:document.getElementById("videoDialogue").value.trim()})});
     const d=await r.json();if(!r.ok)throw new Error(d.error||"Blender render failed");
@@ -229,8 +244,8 @@ document.getElementById("buildRetroScene").addEventListener("click",async()=>{
       video.src=videoUrl;still.src=stillUrl;still.hidden=false;video.load();
     });
     videoStatus.textContent="Render complete. Preview is ready; save the original MP4, PNG still, or editable .blend below.";
-  }catch(e){videoStatus.textContent=e.message;}
-  finally{button.disabled=false;}
+  }catch(e){videoStatus.textContent=e.message;progressMeta.textContent="Production did not complete: "+e.message;}
+  finally{clearInterval(progressTimer);button.disabled=false;}
 });
 document.getElementById("sendCinemaMission").addEventListener("click",()=>{
   const style=videoStyle.value;
