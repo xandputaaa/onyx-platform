@@ -151,7 +151,7 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
             mouth.keyframe_insert(data_path="scale",frame=frame)
     if not ps1 and caption.strip():
         # Camera-parented subtitle card for the PS2 dialogue/meme format.
-        words=caption.strip().replace("\\n"," ").split()
+        words=caption.strip().split()
         lines=[]; line=""
         for word in words:
             candidate=(line+" "+word).strip()
@@ -160,7 +160,7 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
             else: line=candidate
         if line: lines.append(line)
         text_data=bpy.data.curves.new("ORNI PS2 dialogue caption","FONT")
-        text_data.body="\\n".join(lines[:3]); text_data.align_x="CENTER"; text_data.align_y="CENTER"; text_data.size=0.22
+        text_data.body="\n".join(lines[:3]); text_data.align_x="CENTER"; text_data.align_y="CENTER"; text_data.size=0.22
         caption_obj=bpy.data.objects.new("PS2 dialogue caption",text_data); scene.collection.objects.link(caption_obj)
         caption_obj.parent=cam; caption_obj.location=(0,-1.35,-4.2); caption_obj.rotation_euler=(0,0,0)
         caption_obj.data.materials.append(mats["cream"])
