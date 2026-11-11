@@ -74,6 +74,39 @@ textarea{width:100%;min-height:135px;resize:vertical;background:#0c0e10;border:1
     </div>
   </div>
   <div class="gallery-result" id="generatedWrap"><img id="generatedImage" alt="ORNI generated CELVANI design"><div class="creative-status" id="generatedMeta" style="padding:10px"></div></div>
+  <div class="creative-grid" style="margin-top:18px">
+    <div class="panel" style="padding:16px">
+      <div class="eyebrow">CELVANI · MOTION DEVELOPMENT</div>
+      <h2 style="margin-top:5px">Video Studio</h2>
+      <p class="muted small">Create campaign films and product motion concepts from a written brief. MiniMax can use selected library references.</p>
+      <div class="creative-actions" style="margin-top:12px">
+        <label class="small muted" for="videoModel">ENGINE</label>
+        <select id="videoModel" style="background:#0c0e10;color:#f1f3f4;border:1px solid #343a41;border-radius:9px;padding:9px">
+          <option value="kling">Kling V4 Flash</option>
+          <option value="minimax">MiniMax H3 Highspeed</option>
+        </select>
+        <label class="small muted" for="videoDuration">SECONDS</label>
+        <select id="videoDuration" style="background:#0c0e10;color:#f1f3f4;border:1px solid #343a41;border-radius:9px;padding:9px">
+          <option>5</option><option>6</option><option>8</option><option>10</option><option>12</option><option>15</option>
+        </select>
+        <label class="small muted" for="videoRatio">FORMAT</label>
+        <select id="videoRatio" style="background:#0c0e10;color:#f1f3f4;border:1px solid #343a41;border-radius:9px;padding:9px">
+          <option value="9:16">9:16 · Vertical</option><option value="16:9">16:9 · Landscape</option><option value="1:1">1:1 · Square</option>
+        </select>
+      </div>
+      <textarea class="creative-prompt" id="videoPrompt" maxlength="26000" placeholder="Example: A cinematic CELVANI campaign film. A model in the oversized black hoodie walks through a stark concrete gallery. Slow tracking camera, precise garment movement, restrained luxury lighting, detailed fabric texture."></textarea>
+      <div class="creative-actions"><button id="generateVideo">Generate video</button></div>
+      <div class="creative-status" id="videoStatus">Kling V4 Flash · MiniMax H3 Highspeed</div>
+    </div>
+    <div class="panel" style="padding:16px">
+      <div class="eyebrow">GENERATED MOTION</div>
+      <div class="gallery-result" id="generatedVideoWrap" style="display:none">
+        <video id="generatedVideo" controls playsinline style="width:100%;display:block;background:#050607"></video>
+        <div class="creative-status" id="generatedVideoMeta" style="padding:10px"></div>
+      </div>
+      <p class="muted small" id="videoPlaceholder">Your completed campaign clip will appear here and be saved to the CELVANI reference library.</p>
+    </div>
+  </div>
 </section>
 
 <section class="panel" id="missions" style="margin-top:14px">
@@ -96,6 +129,21 @@ assetUpload.addEventListener("change",async()=>{const files=[...assetUpload.file
 document.getElementById("clearRefs").addEventListener("click",()=>{selectedAssets.clear();renderAssets();});
 document.getElementById("generateDesign").addEventListener("click",async()=>{const prompt=document.getElementById("designPrompt").value.trim();if(!prompt){designStatus.textContent="Write a design brief first.";return;}const button=document.getElementById("generateDesign");button.disabled=true;button.textContent="ORNI is creating…";designStatus.textContent="Sending the brief and selected visual references to the image engine…";try{const response=await fetch("/api/orni/designs/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,assetKeys:[...selectedAssets],previousResponseId:previousImageResponseId})});const body=await response.json();if(!response.ok)throw new Error(body.error||"Image generation failed");previousImageResponseId=body.responseId||null;document.getElementById("generatedImage").src=body.asset.url;document.getElementById("generatedWrap").style.display="block";document.getElementById("generatedMeta").textContent="Created with "+body.model+" · Saved to CELVANI reference library";assets.unshift(body.asset);selectedAssets.clear();selectedAssets.add(body.asset.key);renderAssets();designStatus.textContent="Design generated and saved. Refine it with another instruction or select references."; }catch(error){designStatus.textContent=error.message;}finally{button.disabled=false;button.textContent="Generate / edit design";}});
 loadAssets();
+
+const videoModel=document.getElementById("videoModel"),videoDuration=document.getElementById("videoDuration"),videoStatus=document.getElementById("videoStatus");
+videoModel.addEventListener("change",()=>{videoDuration.value=videoModel.value==="minimax"?"5":"5";videoStatus.textContent=videoModel.value==="minimax"?"MiniMax H3 Highspeed · 768P":"Kling V4 Flash · 720P";});
+document.getElementById("generateVideo").addEventListener("click",async()=>{
+  const prompt=document.getElementById("videoPrompt").value.trim();
+  if(!prompt){videoStatus.textContent="Write a video brief first.";return;}
+  const button=document.getElementById("generateVideo");button.disabled=true;button.textContent="ORNI is rendering…";videoStatus.textContent="Sending the campaign brief to Cloudflare AI. Video generation may take a few minutes.";
+  try{
+    const response=await fetch("/api/orni/videos/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,model:videoModel.value,duration:Number(videoDuration.value),aspect_ratio:document.getElementById("videoRatio").value,assetKeys:[...selectedAssets]})});
+    const body=await response.json();if(!response.ok)throw new Error(body.error||"Video generation failed.");
+    const video=document.getElementById("generatedVideo");video.src=body.asset.url;document.getElementById("generatedVideoWrap").style.display="block";document.getElementById("videoPlaceholder").style.display="none";document.getElementById("generatedVideoMeta").textContent="Created with "+body.model+" · Saved to CELVANI reference library";
+    assets.unshift(body.asset);videoStatus.textContent="Video generated and saved.";
+  }catch(error){videoStatus.textContent=error.message;}
+  finally{button.disabled=false;button.textContent="Generate video";}
+});
 
 const send=document.getElementById("send"),hint=document.getElementById("hint"),result=document.getElementById("result");
 send.addEventListener("click",async()=>{const mission=document.getElementById("mission").value.trim();if(!mission){hint.textContent="Enter a mission first.";return;}send.disabled=true;send.textContent="ORNI is working…";hint.textContent="Routing through ONYX.";result.style.display="none";try{const r=await fetch("/api/orni/mission",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mission})});const body=await r.json();result.textContent=JSON.stringify(body,null,2);result.style.display="block";hint.textContent=r.ok?"Mission report received. Review recommendations and assumptions.":(r.status===429||body.category==="provider_rate_limited"?"Groq rate or quota limit. Check Groq Console billing, usage and rate limits for the API key configured on ORNI.":"Mission failed. Review the diagnostic response.");}catch{hint.textContent="Could not reach ONYX. Try again shortly.";}finally{send.disabled=false;send.textContent="Send mission to ORNI";}});
