@@ -84,6 +84,10 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9"):
     head=bpy.context.object; head.name="Retro protagonist | low-poly head"; head.data.materials.append(mats["skin"])
     for p in head.data.polygons: p.use_smooth=False
     cube("Retro protagonist | oversized jacket",(0,0,1.55),(1.05,0.55,1.35),mats["cloth"],0.03)
+    if not ps1:
+        cube("PS2 face | left eye",(-0.16,-0.425,2.57),(0.075,0.035,0.07),mats["ink"],0.008)
+        cube("PS2 face | right eye",(0.16,-0.425,2.57),(0.075,0.035,0.07),mats["ink"],0.008)
+        mouth=cube("PS2 face | dialogue mouth",(0,-0.455,2.34),(0.19,0.035,0.075),mats["ink"],0.008)
     for side in (-1,1):
         arm=cube("Retro protagonist | sleeve",(side*0.72,0,1.62),(0.42,0.48,1.05),mats["blue"],0.02)
         arm.rotation_euler[1]=side*0.12
@@ -126,15 +130,32 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9"):
     scene.view_settings.dither_intensity=0.0 if ps1 else 0.5
     scene.render.image_settings.file_format="PNG"
     scene.render.filepath=str(OUT/"orni_retro_preview.png")
-    # Slow camera push and subtle protagonist turn create a real, editable animation timeline.
-    cam.location=(4.2,-7.8,3.35); cam.keyframe_insert(data_path="location",frame=1)
-    cam.location=(3.35,-6.6,3.0); cam.keyframe_insert(data_path="location",frame=scene.frame_end)
+    # PS1 gets a smooth game-camera push. PS2 gets three deliberate cutscene framings.
+    if ps1:
+        cam.location=(4.2,-7.8,3.35); cam.keyframe_insert(data_path="location",frame=1)
+        cam.location=(3.35,-6.6,3.0); cam.keyframe_insert(data_path="location",frame=scene.frame_end)
+    else:
+        shots=[
+            (1,(4.2,-7.8,3.35),(0,0.9,1.65)),
+            (max(2,int(scene.frame_end*0.34)),(2.7,-6.1,2.95),(0,0,2.0)),
+            (max(3,int(scene.frame_end*0.68)),(0.9,-4.3,2.55),(0,0,2.45)),
+            (scene.frame_end,(1.15,-4.5,2.5),(0,0,2.45))
+        ]
+        for frame,location,look_at in shots:
+            cam.location=location
+            cam.rotation_euler=(Vector(look_at)-cam.location).to_track_quat("-Z","Y").to_euler()
+            cam.keyframe_insert(data_path="location",frame=frame)
+            cam.keyframe_insert(data_path="rotation_euler",frame=frame)
+        for frame in range(1,scene.frame_end+1,4):
+            mouth.scale=(1,0.15 if (frame//4)%2 else 1.0,1)
+            mouth.keyframe_insert(data_path="scale",frame=frame)
     head.rotation_euler[2]=0.0; head.keyframe_insert(data_path="rotation_euler",frame=1)
-    head.rotation_euler[2]=0.16; head.keyframe_insert(data_path="rotation_euler",frame=48)
+    head.rotation_euler[2]=0.16; head.keyframe_insert(data_path="rotation_euler",frame=scene.frame_end)
     for obj in scene.objects:
         if obj.animation_data and obj.animation_data.action:
             for fc in obj.animation_data.action.fcurves:
-                for kp in fc.keyframe_points: kp.interpolation="LINEAR"
+                for kp in fc.keyframe_points:
+                    kp.interpolation="CONSTANT" if (not ps1 and obj==cam) else "LINEAR"
     scene.frame_set(1)
     bpy.ops.wm.save_as_mainfile(filepath=str(OUT/"orni_retro_cinema.blend"))
     bpy.ops.render.render(write_still=True)
@@ -144,7 +165,7 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9"):
     scene.render.ffmpeg.constant_rate_factor="HIGH"; scene.render.ffmpeg.ffmpeg_preset="REALTIME"
     scene.render.filepath=str(OUT/"orni_retro_cinema.mp4")
     bpy.ops.render.render(animation=True)
-    return {"ok":True,"scene":"ORNI "+("PS1 low-poly" if ps1 else "PS2 cutscene")+" retro cinema","style":style,"blend":"/outputs/orni_retro_cinema.blend","preview":"/outputs/orni_retro_preview.png","video":"/outputs/orni_retro_cinema.mp4","frames":scene.frame_end,"fps":12,"durationSeconds":duration,"aspectRatio":aspect_ratio,"note":"Procedural proof-of-pipeline scene. Replace the placeholder character and set with approved CELVANI assets for production campaigns."}
+    return {"ok":True,"scene":"ORNI "+("PS1 low-poly" if ps1 else "PS2 cutscene")+" retro cinema","style":style,"blend":"/outputs/orni_retro_cinema.blend","preview":"/outputs/orni_retro_preview.png","video":"/outputs/orni_retro_cinema.mp4","frames":scene.frame_end,"fps":12,"durationSeconds":duration,"aspectRatio":aspect_ratio,"note":"Procedural proof-of-pipeline scene. Replace the placeholder character and set with approved CELVANI assets for production campaigns. PS2 mouth motion is a timing placeholder; no dialogue or audio is included."}
 
 
 JOBS=queue.Queue()
