@@ -66,6 +66,81 @@ def create_hoodie():
     bpy.ops.render.render(write_still=True)
     return {"ok":True,"scene":"CELVANI oversized hoodie blockout","blend":"/outputs/celvani_hoodie_blockout.blend","render":"/outputs/celvani_hoodie_blockout.png","note":"Concept blockout only; not a manufacturing-accurate garment or approved logo."}
 
+
+def create_retro_cinema(style="ps1"):
+    clear_scene()
+    ps1 = style == "ps1"
+    palette = {
+        "ink": (0.025,0.035,0.065), "blue": (0.08,0.20,0.55),
+        "red": (0.72,0.12,0.16), "cream": (0.78,0.72,0.58),
+        "skin": (0.58,0.34,0.22), "cloth": (0.045,0.055,0.075),
+        "floor": (0.10,0.12,0.16), "accent": (0.22,0.62,0.60)
+    }
+    mats={k:mat("ORNI Retro | "+k,v,0.0,0.95) for k,v in palette.items()}
+    # Low-poly game character: deliberately angular silhouette, not a photoreal human.
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1 if ps1 else 2, radius=0.48, location=(0,0,2.45))
+    head=bpy.context.object; head.name="Retro protagonist | low-poly head"; head.data.materials.append(mats["skin"])
+    for p in head.data.polygons: p.use_smooth=False
+    cube("Retro protagonist | oversized jacket",(0,0,1.55),(1.05,0.55,1.35),mats["cloth"],0.03)
+    for side in (-1,1):
+        arm=cube("Retro protagonist | sleeve",(side*0.72,0,1.62),(0.42,0.48,1.05),mats["blue"],0.02)
+        arm.rotation_euler[1]=side*0.12
+        leg=cube("Retro protagonist | trouser",(side*0.25,0,0.58),(0.42,0.48,1.05),mats["ink"],0.02)
+        cube("Retro protagonist | shoe",(side*0.25,-0.12,0.08),(0.48,0.72,0.2),mats["red"],0.02)
+    # A sparse, game-like alley / stage with block geometry and a long vanishing point.
+    cube("Retro stage floor",(0,1,-0.12),(18,22,0.2),mats["floor"],0)
+    for x in (-5.2,5.2):
+        for y in (1,5,9):
+            cube("Low-poly environment block",(x,y,1.8),(1.5,2.8,3.6),mats["blue"] if x<0 else mats["ink"],0)
+    for x in (-3.0,3.0):
+        cube("Retro set light",(x,3,3.1),(0.16,0.16,4.8),mats["accent"],0)
+    bpy.ops.object.camera_add(location=(4.2,-7.8,3.35))
+    cam=bpy.context.object; cam.name="ORNI retro tracking camera"
+    target=Vector((0,0.9,1.65)); cam.rotation_euler=(target-cam.location).to_track_quat("-Z","Y").to_euler()
+    cam.data.lens=42 if ps1 else 48; bpy.context.scene.camera=cam
+    for name,loc,power,size,color in [
+        ("Retro key",(1,-4,7),900,5,(0.55,0.68,1.0)),
+        ("Retro rim",(-4,2,5),1100,3,(0.18,0.65,0.8)),
+        ("Retro warm fill",(4,4,4),650,4,(1.0,0.38,0.2))
+    ]:
+        bpy.ops.object.light_add(type="AREA",location=loc); light=bpy.context.object
+        light.name=name; light.data.energy=power; light.data.shape="DISK"; light.data.size=size
+        light.data.color=color
+        light.rotation_euler=(Vector((0,0.8,1.8))-light.location).to_track_quat("-Z","Y").to_euler()
+    scene=bpy.context.scene
+    scene.render.engine="BLENDER_EEVEE_NEXT"
+    scene.render.resolution_x=320 if ps1 else 480
+    scene.render.resolution_y=180 if ps1 else 270
+    scene.render.resolution_percentage=100
+    scene.render.fps=12
+    scene.frame_start=1; scene.frame_end=48
+    scene.world.color=(0.025,0.025,0.035)
+    scene.view_settings.view_transform="Standard"
+    scene.view_settings.look="Medium High Contrast"
+    scene.view_settings.dither_intensity=0.0 if ps1 else 0.5
+    scene.render.image_settings.file_format="PNG"
+    scene.render.filepath=str(OUT/"orni_retro_preview.png")
+    # Slow camera push and subtle protagonist turn create a real, editable animation timeline.
+    cam.location=(4.2,-7.8,3.35); cam.keyframe_insert(data_path="location",frame=1)
+    cam.location=(3.35,-6.6,3.0); cam.keyframe_insert(data_path="location",frame=48)
+    head.rotation_euler[2]=0.0; head.keyframe_insert(data_path="rotation_euler",frame=1)
+    head.rotation_euler[2]=0.16; head.keyframe_insert(data_path="rotation_euler",frame=48)
+    for obj in scene.objects:
+        if obj.animation_data and obj.animation_data.action:
+            for fc in obj.animation_data.action.fcurves:
+                for kp in fc.keyframe_points: kp.interpolation="LINEAR"
+    scene.frame_set(1)
+    bpy.ops.wm.save_as_mainfile(filepath=str(OUT/"orni_retro_cinema.blend"))
+    bpy.ops.render.render(write_still=True)
+    # Export a short MP4 using Blender's bundled FFmpeg backend; no external AI service.
+    scene.render.image_settings.file_format="FFMPEG"
+    scene.render.ffmpeg.format="MPEG4"; scene.render.ffmpeg.codec="H264"
+    scene.render.ffmpeg.constant_rate_factor="HIGH"; scene.render.ffmpeg.ffmpeg_preset="REALTIME"
+    scene.render.filepath=str(OUT/"orni_retro_cinema.mp4")
+    bpy.ops.render.render(animation=True)
+    return {"ok":True,"scene":"ORNI "+("PS1 low-poly" if ps1 else "PS2 cutscene")+" retro cinema","style":style,"blend":"/outputs/orni_retro_cinema.blend","preview":"/outputs/orni_retro_preview.png","video":"/outputs/orni_retro_cinema.mp4","frames":48,"fps":12,"note":"Procedural proof-of-pipeline scene. Replace the placeholder character and set with approved CELVANI assets for production campaigns."}
+
+
 JOBS=queue.Queue()
 
 def process_jobs():
@@ -76,6 +151,8 @@ def process_jobs():
     try:
         if job["action"]=="hoodie":
             job["result"]=create_hoodie()
+        elif job["action"]=="retro":
+            job["result"]=create_retro_cinema(job.get("style","ps1"))
         elif job["action"]=="render":
             scene=bpy.context.scene
             scene.render.filepath=str(OUT/"celvani_render.png")
@@ -97,11 +174,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path=="/health": return self.reply(200,{"ok":True,"service":"orni-blender-control","blender":bpy.app.version_string})
         if self.path=="/outputs": return self.reply(200,{"files":[p.name for p in OUT.iterdir() if p.is_file()]})
-        if self.path in ("/outputs/celvani_hoodie_blockout.png","/outputs/celvani_hoodie_blockout.blend","/outputs/celvani_render.png"):
+        if self.path in ("/outputs/celvani_hoodie_blockout.png","/outputs/celvani_hoodie_blockout.blend","/outputs/celvani_render.png","/outputs/orni_retro_preview.png","/outputs/orni_retro_cinema.blend","/outputs/orni_retro_cinema.mp4"):
             if not TOKEN or self.headers.get("Authorization")!="Bearer "+TOKEN: return self.reply(401,{"error":"unauthorized"})
             path=OUT/self.path.rsplit("/",1)[-1]
             if not path.is_file(): return self.reply(404,{"error":"file_not_ready"})
-            mime="image/png" if path.suffix==".png" else "application/octet-stream"
+            mime="image/png" if path.suffix==".png" else "video/mp4" if path.suffix==".mp4" else "application/octet-stream"
             data=path.read_bytes()
             self.send_response(200); self.send_header("Content-Type",mime); self.send_header("Content-Length",str(len(data))); self.send_header("Cache-Control","no-store"); self.end_headers(); self.wfile.write(data)
             return
@@ -111,11 +188,11 @@ class Handler(BaseHTTPRequestHandler):
         n=int(self.headers.get("Content-Length","0"))
         if n>4096: return self.reply(413,{"error":"payload_too_large"})
         body=json.loads(self.rfile.read(n) or b"{}")
-        action={"/api/scene/celvani-hoodie":"hoodie","/api/render":"render"}.get(self.path)
+        action={"/api/scene/celvani-hoodie":"hoodie","/api/scene/retro-cinema":"retro","/api/render":"render"}.get(self.path)
         if not action: return self.reply(404,{"error":"unknown_action"})
-        job={"action":action,"done":threading.Event(),"result":None}
+        job={"action":action,"style":body.get("style","ps1") if isinstance(body,dict) else "ps1","done":threading.Event(),"result":None}
         JOBS.put(job)
-        if not job["done"].wait(120): return self.reply(504,{"error":"Blender operation timed out"})
+        if not job["done"].wait(900): return self.reply(504,{"error":"Blender operation timed out"})
         result=job["result"] or {"error":"empty_result"}
         return self.reply(200 if result.get("ok") else 500,result)
     def log_message(self,*args): pass
