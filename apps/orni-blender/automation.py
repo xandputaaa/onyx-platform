@@ -1,4 +1,4 @@
-import bpy, json, os, threading, queue, subprocess, shutil
+import bpy, json, os, threading, queue, subprocess, shutil, math
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from mathutils import Vector
@@ -67,7 +67,153 @@ def create_hoodie():
     return {"ok":True,"scene":"CELVANI oversized hoodie blockout","blend":"/outputs/celvani_hoodie_blockout.blend","render":"/outputs/celvani_hoodie_blockout.png","note":"Concept blockout only; not a manufacturing-accurate garment or approved logo."}
 
 
+def create_crash_woods_cinema():
+    """15-second PS1-style crash-dummy short: crash, exit, forest walk, moon pan."""
+    clear_scene()
+    scene=bpy.context.scene
+    scene.render.engine="BLENDER_EEVEE_NEXT"
+    scene.render.resolution_x=320; scene.render.resolution_y=180; scene.render.resolution_percentage=100
+    scene.render.fps=12; scene.frame_start=1; scene.frame_end=180
+    scene.world.color=(0.006,0.009,0.025)
+    scene.view_settings.view_transform="Standard"
+    scene.view_settings.look="Medium High Contrast"
+    scene.view_settings.dither_intensity=0.0
+    scene.render.image_settings.file_format="PNG"
+    scene.render.resolution_percentage=100
+
+    asphalt=mat("Night road | blue-black",(0.018,0.025,0.04),0,1)
+    dirt=mat("Forest floor | midnight",(0.025,0.045,0.035),0,1)
+    bark=mat("Tree bark | dark umber",(0.12,0.075,0.045),0,1)
+    pine=mat("Pine needles | deep green",(0.025,0.10,0.065),0,1)
+    carpaint=mat("Car | faded midnight red",(0.34,0.045,0.035),0,0.9)
+    glass=mat("Car glass | dark blue",(0.025,0.075,0.12),0,0.5)
+    rubber=mat("Tires",(0.012,0.014,0.018),0,1)
+    metal=mat("Crash dummy | ivory polymer",(0.78,0.76,0.66),0,0.85)
+    joint=mat("Crash dummy | dark joints",(0.12,0.13,0.14),0,0.9)
+    moonmat=mat("Moon | pale ivory",(0.78,0.82,0.91),0,1)
+    headlight=mat("Headlights | pale yellow",(0.95,0.78,0.42),0,0.5)
+
+    cube("Forest ground",(0,3,-0.22),(70,90,0.4),dirt,0)
+    cube("Narrow forest road",(0,-7,0),(7,55,0.12),asphalt,0)
+    # Roadside stones and low-poly pines create a dense dark tree line.
+    import random
+    random.seed(17)
+    for side in (-1,1):
+        for i in range(34):
+            y=-29+i*1.75+random.uniform(-0.5,0.5)
+            x=side*random.uniform(5.0,12.0)
+            h=random.uniform(4.5,8.5)
+            bpy.ops.mesh.primitive_cone_add(vertices=5, radius1=h*0.34, radius2=0, depth=h*0.72, location=(x,y,h*0.52))
+            crown=bpy.context.object; crown.name="PS1 pine canopy"; crown.data.materials.append(pine)
+            for p in crown.data.polygons: p.use_smooth=False
+            bpy.ops.mesh.primitive_cone_add(vertices=5, radius1=0.22, radius2=0.12, depth=h*0.42, location=(x,y,h*0.19))
+            trunk=bpy.context.object; trunk.name="Low-poly pine trunk"; trunk.data.materials.append(bark)
+    # A chunky compact car, built as separate readable game meshes.
+    car_parts=[]
+    body=cube("Car body",(0,-5,0.95),(2.35,4.2,0.85),carpaint,0.12); car_parts.append(body)
+    cabin=cube("Car cabin",(0,-5.05,1.65),(1.72,2.15,0.85),glass,0.10); car_parts.append(cabin)
+    hood=cube("Car hood",(0,-3.45,1.25),(2.25,1.05,0.25),carpaint,0.04); car_parts.append(hood)
+    for x in (-1.02,1.02):
+        for y in (-6.35,-3.65):
+            bpy.ops.mesh.primitive_cylinder_add(vertices=8,radius=0.43,depth=0.22,location=(x,y,0.48),rotation=(0,math.pi/2,0))
+            w=bpy.context.object; w.name="Car wheel"; w.data.materials.append(rubber); car_parts.append(w)
+    for x in (-0.72,0.72):
+        lamp=cube("Headlamp",(x,-2.88,1.0),(0.34,0.08,0.18),headlight,0.025); car_parts.append(lamp)
+    # Dummy is assembled from primitive pieces, with articulated limbs.
+    dummy_parts=[]
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1,radius=0.34,location=(0,-7,2.15))
+    dhead=bpy.context.object; dhead.name="Crash dummy | faceted head"; dhead.data.materials.append(metal); dummy_parts.append(dhead)
+    torso=cube("Crash dummy | torso",(0,-7,1.25),(0.72,0.42,0.95),metal,0.05); dummy_parts.append(torso)
+    pelvis=cube("Crash dummy | pelvis",(0,-7,0.78),(0.62,0.40,0.34),joint,0.04); dummy_parts.append(pelvis)
+    limbs=[]
+    for side in (-1,1):
+        upper=cube("Crash dummy | upper arm",(side*0.52,-7,1.36),(0.22,0.25,0.72),metal,0.04)
+        lower=cube("Crash dummy | forearm",(side*0.52,-7,0.98),(0.19,0.22,0.55),metal,0.035)
+        thigh=cube("Crash dummy | thigh",(side*0.2,-7,0.43),(0.25,0.28,0.65),metal,0.04)
+        shin=cube("Crash dummy | shin",(side*0.2,-7,0.08),(0.22,0.25,0.55),metal,0.035)
+        limbs.extend([upper,lower,thigh,shin]); dummy_parts.extend([upper,lower,thigh,shin])
+    # Dummy begins inside the car, then is staged beside it and walks into the trees.
+    # Animate grouped pieces as a simple articulated game character.
+    for obj in dummy_parts:
+        obj.location.x += 0
+    def key_loc(obj, frame, loc):
+        obj.location=loc; obj.keyframe_insert(data_path="location",frame=frame)
+    # Car drives toward a roadside tree and jolts to a stop at ~3 seconds.
+    for obj in car_parts:
+        start=obj.location.copy()
+        obj.location.y=-18; obj.keyframe_insert(data_path="location",frame=1)
+        obj.location.y=-5; obj.keyframe_insert(data_path="location",frame=27)
+        obj.location.y=-4.1; obj.keyframe_insert(data_path="location",frame=34)
+        obj.location.y=-4.1; obj.keyframe_insert(data_path="location",frame=180)
+    # Dummy appears in the driver's seat, exits on the near side, then walks away.
+    # Use a coherent group translation; staggered arm/leg swings suggest a PS1 walk cycle.
+    for obj in dummy_parts:
+        base=obj.location.copy()
+        obj.location=base+Vector((0,0.2,0)); obj.keyframe_insert(data_path="location",frame=1)
+        obj.location=base+Vector((0,0.2,0)); obj.keyframe_insert(data_path="location",frame=38)
+        obj.location=base+Vector((1.8,0.0,0)); obj.keyframe_insert(data_path="location",frame=65)
+        obj.location=base+Vector((3.0,3.0,0)); obj.keyframe_insert(data_path="location",frame=105)
+        obj.location=base+Vector((4.5,8.0,0)); obj.keyframe_insert(data_path="location",frame=142)
+        obj.location=base+Vector((5.0,10.0,0)); obj.keyframe_insert(data_path="location",frame=150)
+    # Forest moon, deliberately faceted like a PS1 skybox prop.
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2,radius=2.0,location=(0,18,17))
+    moon=bpy.context.object; moon.name="Moon | final reveal"; moon.data.materials.append(moonmat)
+    # Small star points.
+    for i in range(45):
+        x=random.uniform(-28,28); y=random.uniform(-8,30); z=random.uniform(10,24)
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1,radius=0.055,location=(x,y,z))
+        star=bpy.context.object; star.name="Pixel-star"; star.data.materials.append(moonmat)
+
+    # Cold moonlight and weak warm headlamp spill.
+    bpy.ops.object.light_add(type="SUN",location=(0,0,12))
+    sun=bpy.context.object; sun.name="Moonlit forest"; sun.data.energy=0.65; sun.data.color=(0.42,0.55,1.0)
+    sun.rotation_euler=(0.45,-0.35,-0.3)
+    bpy.ops.object.light_add(type="AREA",location=(0,-1,3))
+    glow=bpy.context.object; glow.name="Car headlamp spill"; glow.data.energy=90; glow.data.shape="DISK"; glow.data.size=5
+    glow.data.color=(1.0,0.65,0.35); glow.rotation_euler=(math.radians(25),0,0)
+
+    bpy.ops.object.camera_add(location=(7,-15,5))
+    cam=bpy.context.object; cam.name="ORNI crash-film camera"; scene.camera=cam; cam.data.lens=42
+    def aim(frame, loc, target):
+        cam.location=loc; cam.rotation_euler=(Vector(target)-cam.location).to_track_quat("-Z","Y").to_euler()
+        cam.keyframe_insert(data_path="location",frame=frame); cam.keyframe_insert(data_path="rotation_euler",frame=frame)
+    # 0-3.0s: establish the road and follow the impact.
+    aim(1,(7,-16,5),(0,-7,1))
+    aim(28,(5,-11,3.2),(0,-4,1))
+    # 3-6s: hold on the wreck as the dummy gets out.
+    aim(48,(6,-10,3.0),(0,-4,1.2))
+    aim(70,(4,-7,2.6),(1.4,-4,1.2))
+    # 6-12.5s: follow the dummy deeper into the forest.
+    aim(105,(9,-1,3.2),(3,3,1.2))
+    aim(145,(10,5,4.2),(4.5,8,1.2))
+    # 12.5-15s: tilt/pan up to the moon and hold the final image.
+    aim(151,(7,8,5),(5,10,1))
+    aim(180,(0,13,8),(0,18,17))
+    for obj in scene.objects:
+        if obj.animation_data and obj.animation_data.action:
+            for fc in obj.animation_data.action.fcurves:
+                for kp in fc.keyframe_points: kp.interpolation="LINEAR"
+    scene.render.filepath=str(OUT/"orni_crash_woods_preview.png")
+    scene.frame_set(1)
+    bpy.ops.wm.save_as_mainfile(filepath=str(OUT/"orni_crash_woods.blend"))
+    bpy.ops.render.render(write_still=True)
+    frames_dir=OUT/"orni_crash_woods_frames"
+    if frames_dir.exists(): shutil.rmtree(frames_dir,ignore_errors=True)
+    frames_dir.mkdir(parents=True,exist_ok=True)
+    scene.render.filepath=str(frames_dir/"frame_")
+    bpy.ops.render.render(animation=True)
+    video_file=OUT/"orni_crash_woods_15s.mp4"
+    try:
+        subprocess.run(["ffmpeg","-y","-framerate","12","-i",str(frames_dir/"frame_%04d.png"),"-c:v","libx264","-pix_fmt","yuv420p","-crf","21","-preset","ultrafast","-movflags","+faststart",str(video_file)],check=True,capture_output=True,text=True,timeout=480)
+    except FileNotFoundError: raise RuntimeError("FFmpeg is not installed in the Blender worker.")
+    except subprocess.CalledProcessError as exc: raise RuntimeError("FFmpeg encoding failed: "+(exc.stderr or "unknown error")[-1200:])
+    finally: shutil.rmtree(frames_dir,ignore_errors=True)
+    if not video_file.is_file() or video_file.stat().st_size<1024: raise RuntimeError("15-second crash-woods MP4 was not created.")
+    return {"ok":True,"scene":"ORNI PS1 crash dummy in the woods","style":"ps1-crash-woods","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"note":"Procedural low-poly first pass; verify character exit, walk and moon-pan timing in the rendered video."}
+
+
 def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""):
+    if style == "crash-woods": return create_crash_woods_cinema()
     clear_scene()
     ps1 = style == "ps1"
     duration = max(3,min(15,int(duration or 5)))
@@ -240,7 +386,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path=="/health": return self.reply(200,{"ok":True,"service":"orni-blender-control","blender":bpy.app.version_string})
         if self.path=="/outputs": return self.reply(200,{"files":[p.name for p in OUT.iterdir() if p.is_file()]})
-        if self.path in ("/outputs/celvani_hoodie_blockout.png","/outputs/celvani_hoodie_blockout.blend","/outputs/celvani_render.png","/outputs/orni_retro_preview.png","/outputs/orni_retro_cinema.blend","/outputs/orni_retro_cinema.mp4"):
+        if self.path in ("/outputs/celvani_hoodie_blockout.png","/outputs/celvani_hoodie_blockout.blend","/outputs/celvani_render.png","/outputs/orni_retro_preview.png","/outputs/orni_retro_cinema.blend","/outputs/orni_retro_cinema.mp4","/outputs/orni_crash_woods_preview.png","/outputs/orni_crash_woods.blend","/outputs/orni_crash_woods_15s.mp4"):
             if not TOKEN or self.headers.get("Authorization")!="Bearer "+TOKEN: return self.reply(401,{"error":"unauthorized"})
             path=OUT/self.path.rsplit("/",1)[-1]
             if not path.is_file(): return self.reply(404,{"error":"file_not_ready"})
