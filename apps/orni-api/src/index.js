@@ -216,8 +216,25 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
 
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      console.error("ORNI model provider returned an error", { status: response.status, type: payload?.error?.type });
-      return res.status(502).json({ error: "ORNI model provider request failed", providerStatus: response.status });
+      const providerError = payload?.error || {};
+      const limited = response.status === 429;
+      const retryAfter = response.headers.get("retry-after");
+      console.error("ORNI model provider returned an error", {
+        status: response.status,
+        type: providerError.type,
+        code: providerError.code
+      });
+      return res.status(limited ? 429 : 502).json({
+        error: limited ? "ORNI provider rate or quota limit reached" : "ORNI model provider request failed",
+        category: limited ? "provider_rate_limited" : "provider_error",
+        providerStatus: response.status,
+        providerType: providerError.type || null,
+        providerCode: providerError.code || null,
+        retryAfter: retryAfter || null,
+        action: limited
+          ? "Check the OpenAI project billing, usage limits, and rate limits for the API key configured on the ORNI Railway service."
+          : "Check the ORNI provider configuration and deployment logs."
+      });
     }
 
     const output = payload.output_text || (payload.output || [])
