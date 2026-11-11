@@ -32,6 +32,24 @@ app.get("/api/agents", async (_req, res) => {
   });
 });
 
+app.get("/api/orni/blender/status", async (_req, res) => {
+  const workerBase = (process.env.ORNI_BLENDER_BASE_URL || "").replace(/\/$/, "");
+  if (!workerBase) {
+    return res.json({
+      connected: false,
+      state: "not_configured",
+      message: "The Blender worker has not been provisioned or connected yet."
+    });
+  }
+  try {
+    const r = await fetch(`${workerBase}/status`, { signal: AbortSignal.timeout(4000) });
+    const body = await r.json().catch(() => ({}));
+    return res.status(r.ok ? 200 : 502).json({ connected: r.ok, state: r.ok ? "connected" : "degraded", worker: body });
+  } catch {
+    return res.status(502).json({ connected: false, state: "unreachable", message: "The configured Blender worker could not be reached." });
+  }
+});
+
 app.post("/api/orni/mission", async (req, res) => {
   const mission = req.body?.mission;
   if (typeof mission !== "string" || !mission.trim() || mission.length > 6000) {
