@@ -43,24 +43,14 @@ app.get("/api/orni/ready", async (_req, res) => {
   }
 });
 
-app.get("/api/orni/blender/status", async (_req, res) => {
-  // Use the already-deployed Blender service by default; do not provision new infrastructure.
-  const workerBase = (process.env.ORNI_BLENDER_BASE_URL || "https://orni-blender-production.up.railway.app").replace(/\/$/, "");
-  const viewerUrl = process.env.ORNI_BLENDER_VIEW_URL || "https://orni-blender-production.up.railway.app/vnc.html?autoconnect=true&resize=remote&path=websockify";
+app.get("/api/orni/blender/status", async (_req,res) => {
+  if (!process.env.ORNI_ACCESS_TOKEN) return res.status(503).json({connected:false,state:"not_configured",message:"ONYX-to-ORNI authentication is not configured."});
   try {
-    // noVNC serves vnc.html; the root path is not a reliable health check.
-    const r = await fetch(`${workerBase}/vnc.html`, { signal: AbortSignal.timeout(5000) });
-    const html = r.ok ? await r.text() : "";
-    const ready = r.ok && html.toLowerCase().includes("novnc");
-    return res.status(ready ? 200 : 502).json({
-      connected: ready,
-      state: ready ? "viewer_ready" : "degraded",
-      viewerUrl: ready ? viewerUrl : null,
-      message: ready ? "The existing Blender desktop and noVNC viewer are reachable." : "The Blender service is reachable but its noVNC viewer did not pass validation."
-    });
-  } catch {
-    return res.status(502).json({ connected: false, state: "unreachable", viewerUrl: null, message: "The existing Blender service could not be reached. Automatic retries remain enabled." });
-  }
+    const r=await fetch(`${orniBase}/api/orni/blender/status`,{headers:{"Authorization":`Bearer ${process.env.ORNI_ACCESS_TOKEN}`},signal:AbortSignal.timeout(6000)});
+    const body=await r.json().catch(()=>({}));
+    if(body.connected) body.viewerUrl="https://orni-blender-production.up.railway.app/vnc.html?autoconnect=true&resize=remote&path=websockify";
+    return res.status(r.status).json(body);
+  } catch { return res.status(502).json({connected:false,state:"unreachable",viewerUrl:null,message:"Could not reach the Blender control service."}); }
 });
 
 
