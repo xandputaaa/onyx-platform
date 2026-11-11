@@ -84,7 +84,8 @@ textarea{width:100%;min-height:135px;resize:vertical;background:#0c0e10;border:1
       <div class="creative-actions" style="margin-top:12px">
         <label class="small muted" for="videoStyle">VISUAL PRESET</label>
         <select id="videoStyle" style="background:#0c0e10;color:#f1f3f4;border:1px solid #343a41;border-radius:9px;padding:9px">
-          <option value="ps1">PS1 · Low-poly retro (DUMBDAYS!)</option>
+          <option value="ps1">PS1 · Low-poly retro (DUMBDAYS! + NoPoly)</option>
+          <option value="crash-woods">PS1 · Crash dummy in the woods · 15 sec</option>
           <option value="ps2-cutscene">PS2 · Cutscene comedy (Luca Maxim format)</option>
 
         </select>
@@ -183,9 +184,9 @@ const videoStyle=document.getElementById("videoStyle"),videoDuration=document.ge
 fetch("/api/orni/reference-cinema").then(r=>r.json()).then(d=>{if(d.ok)videoStatus.textContent="Reference Cinema "+d.playbookVersion+" · "+d.engine+" · free-only";}).catch(()=>{});
 
 document.getElementById("buildRetroScene").addEventListener("click",async()=>{
-  const style=videoStyle.value==="ps2-cutscene"?"ps2":"ps1";
+  const style=videoStyle.value==="ps2-cutscene"?"ps2":videoStyle.value==="crash-woods"?"crash-woods":"ps1";
   const button=document.getElementById("buildRetroScene");button.disabled=true;videoStatus.textContent="Building an editable "+style.toUpperCase()+" scene and rendering a short MP4 in Blender…";
-  try{const r=await fetch("/api/orni/blender/scene/retro-cinema",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({style,duration:Number(videoDuration.value),aspectRatio:document.getElementById("videoRatio").value,caption:document.getElementById("videoDialogue").value.trim()})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Blender retro scene failed");videoStatus.textContent="Created "+d.scene+" · "+d.frames+" frames. Loading finished MP4…";const video=document.getElementById("generatedVideo");video.src="/api/orni/blender/retro-video?ts="+Date.now();const still=document.getElementById("retroStill");still.src="/api/orni/blender/retro-preview?ts="+Date.now();still.hidden=false;document.getElementById("generatedVideoWrap").style.display="block";document.getElementById("videoPlaceholder").style.display="none";document.getElementById("generatedVideoMeta").textContent="Blender · "+d.style+" · editable scene and MP4 rendered";video.load();videoStatus.textContent="Blender scene and MP4 rendered. Open the live Blender workspace to edit the scene.";
+  try{const r=await fetch("/api/orni/blender/scene/retro-cinema",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({style,duration:style==="crash-woods"?15:Number(videoDuration.value),aspectRatio:style==="crash-woods"?"16:9":document.getElementById("videoRatio").value,caption:document.getElementById("videoDialogue").value.trim()})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Blender retro scene failed");videoStatus.textContent="Created "+d.scene+" · "+d.frames+" frames. Loading finished MP4…";const video=document.getElementById("generatedVideo");video.src=(style==="crash-woods"?"/api/orni/blender/crash-woods-video":"/api/orni/blender/retro-video")+"?ts="+Date.now();const still=document.getElementById("retroStill");still.src=(style==="crash-woods"?"/api/orni/blender/crash-woods-preview":"/api/orni/blender/retro-preview")+"?ts="+Date.now();still.hidden=false;document.getElementById("generatedVideoWrap").style.display="block";document.getElementById("videoPlaceholder").style.display="none";document.getElementById("generatedVideoMeta").textContent="Blender · "+d.style+" · editable scene and MP4 rendered";video.load();videoStatus.textContent="Blender scene and MP4 rendered. Open the live Blender workspace to edit the scene.";
   }catch(e){videoStatus.textContent=e.message;}finally{button.disabled=false;}
 });
 document.getElementById("sendCinemaMission").addEventListener("click",()=>{
