@@ -1,7 +1,7 @@
 import bpy, json, os, threading, queue, subprocess, shutil, math, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from mathutils import Vector
+from mathutils import Vector, Matrix
 
 TOKEN = os.environ.get("ORNI_BLENDER_TOKEN", "")
 OUT = Path("/workspace/outputs")
@@ -306,9 +306,9 @@ def create_crash_woods_cinema():
     # Door swings open to camera-facing side; door is a custom panel on a hinge empty.
     door_hinge=bpy.data.objects.new("Driver door | hinge",None); scene.collection.objects.link(door_hinge)
     door_hinge.location=(1.0,-0.62,1.18); parent_local(door_hinge,car_root)
-    door=box_mesh("Driver door | sculpted burgundy panel",(1.12,-0.62,1.15),(0.12,1.18,0.78),paint,0.035)
+    door=box_mesh("Driver door | sculpted burgundy panel",(0,0,0),(0.12,1.18,0.78),paint,0.035)
     door.parent=door_hinge; door.matrix_parent_inverse=Matrix.Identity(4)
-    door.location=(0.12,0,0)
+    door.location=(0.06,0.59,0)
     door_hinge.rotation_euler[2]=0; door_hinge.keyframe_insert(data_path="rotation_euler",frame=34)
     door_hinge.rotation_euler[2]=math.radians(-68); door_hinge.keyframe_insert(data_path="rotation_euler",frame=43)
     door_hinge.rotation_euler[2]=math.radians(-68); door_hinge.keyframe_insert(data_path="rotation_euler",frame=68)
