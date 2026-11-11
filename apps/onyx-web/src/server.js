@@ -73,7 +73,7 @@ async function orniForward(req, res, route, method = "GET") {
         ...(method !== "GET" ? { "Content-Type": "application/json" } : {})
       },
       ...(method !== "GET" ? { body: JSON.stringify(req.body || {}) } : {}),
-      signal: AbortSignal.timeout(120000)
+      signal: AbortSignal.timeout(route.includes("retro-cinema") ? 600000 : 120000)
     });
     const payload = await upstream.json().catch(() => ({ error: "ORNI returned an unreadable response." }));
     return res.status(upstream.status).json(payload);
