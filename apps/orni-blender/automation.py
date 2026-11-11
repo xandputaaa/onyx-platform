@@ -300,9 +300,19 @@ def create_crash_woods_cinema():
     except subprocess.CalledProcessError as exc: raise RuntimeError("FFmpeg encoding failed: "+(exc.stderr or "unknown error")[-1200:])
     finally: shutil.rmtree(frames_dir,ignore_errors=True)
     if not video_file.is_file() or video_file.stat().st_size<1024: raise RuntimeError("15-second crash-woods MP4 was not created.")
+    # Probe stream metadata and decode the complete file before exposing it as a deliverable.
+    probe=subprocess.run(["ffprobe","-v","error","-select_streams","v:0","-show_entries","stream=width,height,r_frame_rate","-show_entries","format=duration","-of","json",str(video_file)],check=True,capture_output=True,text=True,timeout=30)
+    probe_data=json.loads(probe.stdout)
+    stream=(probe_data.get("streams") or [{}])[0]
+    duration=float((probe_data.get("format") or {}).get("duration",0))
+    if (stream.get("width"),stream.get("height"))!=(960,540):
+        raise RuntimeError("MP4 dimensions failed validation: expected 960x540 nearest-neighbour upscale.")
+    if stream.get("r_frame_rate")!="12/1" or not 14.5<=duration<=15.5:
+        raise RuntimeError("MP4 frame rate or duration failed validation.")
+    subprocess.run(["ffmpeg","-v","error","-i",str(video_file),"-f","null","-"],check=True,capture_output=True,text=True,timeout=180)
     set_job_status(stage="Validating MP4, preview and editable scene", progress=98)
     if not (OUT/"orni_crash_woods.blend").is_file() or not (OUT/"orni_crash_woods_preview.png").is_file(): raise RuntimeError("One or more required Blender deliverables are missing.")
-    return {"ok":True,"scene":"ORNI PS1 crash dummy in the woods","style":"ps1-crash-woods","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"resolutionX":320,"resolutionY":180,"aspectRatio":"16:9","uvMappedMeshes":uv_mesh_count,"pixelTextureResolution":"16x16 per material","note":"Low-poly scene with native UV smart projection and packed 16x16 nearest-sampled material textures; rendered story beats still require playback QA."}
+    return {"ok":True,"scene":"ORNI PS1 crash dummy in the woods","style":"ps1-crash-woods","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"resolutionX":960,"resolutionY":540,"sourceResolution":"320x180","aspectRatio":"16:9","uvMappedMeshes":uv_mesh_count,"pixelTextureResolution":"16x16 per material","decodeValidated":True,"note":"Native UVs and packed 16x16 nearest-sampled material textures; MP4 metadata and full decode validated. Story beats still require human playback review."}
 
 
 def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""):
