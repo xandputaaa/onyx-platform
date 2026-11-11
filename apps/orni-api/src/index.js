@@ -131,6 +131,25 @@ app.get("/api/orni/profile", (_req, res) => {
   });
 });
 
+
+app.get("/api/orni/blender/status", requireAgentToken, async (_req,res) => {
+  const base=(process.env.ORNI_BLENDER_API_URL||"").replace(/\/$/,"");
+  if(!base) return res.json({connected:false,state:"not_configured",message:"Blender private API URL is not configured."});
+  try {
+    const r=await fetch(base+"/health",{signal:AbortSignal.timeout(4000)});
+    const body=await r.json().catch(()=>({}));
+    return res.status(r.ok?200:502).json({connected:r.ok,state:r.ok?"connected":"degraded",worker:body});
+  } catch { return res.status(502).json({connected:false,state:"unreachable"}); }
+});
+app.post("/api/orni/blender/scene/celvani-hoodie", requireAgentToken, async (_req,res) => {
+  const base=(process.env.ORNI_BLENDER_API_URL||"").replace(/\/$/,"");
+  if(!base||!process.env.ORNI_BLENDER_TOKEN) return res.status(503).json({error:"Blender private API is not configured."});
+  try {
+    const r=await fetch(base+"/api/scene/celvani-hoodie",{method:"POST",headers:{"Authorization":`Bearer ${process.env.ORNI_BLENDER_TOKEN}`,"Content-Type":"application/json"},body:"{}",signal:AbortSignal.timeout(90000)});
+    return res.status(r.status).json(await r.json().catch(()=>({error:"Invalid Blender response"})));
+  } catch(e) { return res.status(e?.name==="TimeoutError"?504:502).json({error:"Blender worker unavailable"}); }
+});
+
 app.get("/api/orni/status", (_req, res) => {
   res.status(200).json({
     agent: "ORNI",
