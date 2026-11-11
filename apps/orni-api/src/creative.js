@@ -31,8 +31,9 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
   app.get("/api/orni/creative/status",requireAgentToken,(_req,res)=>{
     const storage=getStorage();
     const provider=process.env.IMAGE_PROVIDER||"cloudflare";
-    const keyReady=provider==="cloudflare"?Boolean(process.env.CLOUDFLARE_WORKER_URL&&process.env.ORNI_WORKER_TOKEN):provider==="fal"?Boolean(process.env.FAL_KEY):Boolean(process.env.OPENAI_API_KEY);
-    res.json({ok:Boolean(storage&&keyReady),provider,imageModel:provider==="cloudflare"?"black-forest-labs/flux-3-image-klein":provider==="fal"?"FLUX.2 Pro":"gpt-image-2.6-sunburst",videoModels:provider==="cloudflare"?["klingai/kling-v4-flash","minimax/h3-highspeed"]:[],storage:storage?"connected":"not_configured",generation:keyReady});
+    const freeOnly=process.env.ORNI_FREE_ONLY==="true";
+    const keyReady=!freeOnly&&(provider==="cloudflare"?Boolean(process.env.CLOUDFLARE_WORKER_URL&&process.env.ORNI_WORKER_TOKEN):provider==="fal"?Boolean(process.env.FAL_KEY):Boolean(process.env.OPENAI_API_KEY));
+    res.json({ok:Boolean(storage&&keyReady),freeOnly,provider,imageModel:freeOnly?"Blender procedural studio":provider==="cloudflare"?"black-forest-labs/flux-3-image-klein":provider==="fal"?"FLUX.2 Pro":"gpt-image-2.6-sunburst",videoModels:freeOnly?[]:provider==="cloudflare"?["klingai/kling-v4-flash","minimax/h3-highspeed"]:[],storage:storage?"connected":"not_configured",generation:keyReady});
   });
   app.get("/api/orni/assets",requireAgentToken,async(_req,res)=>{
     const s3=getStorage(); if(!s3)return res.status(503).json({error:"CELVANI asset storage is not configured."});
@@ -60,6 +61,7 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
     }catch(error){console.error("ORNI asset upload failed",{name:error?.name});return res.status(502).json({error:"Could not save this image to the CELVANI library."});}
   });
   app.post("/api/orni/designs/generate",requireAgentToken,async(req,res)=>{
+    if(process.env.ORNI_FREE_ONLY==="true")return res.status(403).json({error:"Paid image providers are disabled in ORNI free-only mode. Use the Blender production workspace instead."});
     const provider=process.env.IMAGE_PROVIDER||"cloudflare";
     const apiKey=provider==="fal"?process.env.FAL_KEY:process.env.OPENAI_API_KEY;
     const workerReady=Boolean(process.env.CLOUDFLARE_WORKER_URL&&process.env.ORNI_WORKER_TOKEN);
@@ -142,6 +144,7 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
   });
 
   app.post("/api/orni/videos/generate",requireAgentToken,async(req,res)=>{
+    if(process.env.ORNI_FREE_ONLY==="true")return res.status(403).json({error:"Paid video providers are disabled in ORNI free-only mode. Use Blender for free scene animation and rendering."});
     const workerUrl=process.env.CLOUDFLARE_WORKER_URL?.replace(/\/+$/,"");
     const workerToken=process.env.ORNI_WORKER_TOKEN;
     const s3=getStorage();
