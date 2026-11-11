@@ -136,7 +136,7 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
       console.error("ORNI creative generation failed",{name:error?.name,timedOut});
       return res.status(timedOut?504:502).json({error:timedOut?"Image generation timed out.":"Could not complete the CELVANI image generation request.",provider});
     }finally{
-      const temporaryKeys=assetKeys.filter(key=>key.startsWith("celvani/temp/"));
+      const temporaryKeys=assetKeys.filter(key=>!key.startsWith("celvani/generated-"));
       if(s3&&temporaryKeys.length)await Promise.allSettled(temporaryKeys.map(Key=>s3.send(new DeleteObjectCommand({Bucket:process.env.ASSETS_S3_BUCKET,Key}))));
     }
   });
