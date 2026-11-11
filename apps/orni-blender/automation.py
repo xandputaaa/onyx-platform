@@ -26,6 +26,15 @@ def cube(name, loc, scale, material, bevel=0.12):
         o.modifiers.new("Weighted corner normals","WEIGHTED_NORMAL")
     return o
 
+def set_compatible_eevee(scene):
+    """Choose the Eevee engine identifier supported by this Blender build."""
+    supported = {item.identifier for item in scene.render.bl_rna.properties["engine"].enum_items}
+    for engine in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
+        if engine in supported:
+            scene.render.engine = engine
+            return engine
+    raise RuntimeError("This Blender build supports neither Eevee Next nor Eevee.")
+
 def create_hoodie():
     clear_scene()
     black=mat("CELVANI | deep black fleece",(0.012,0.014,0.018),0.0,0.82)
@@ -56,7 +65,7 @@ def create_hoodie():
     for name,loc,power,size in [("Key softbox",(1,-5,7),1100,5),("Fill softbox",(-5,-2,4),700,4),("Rim light",(2,4,6),1300,3)]:
         bpy.ops.object.light_add(type="AREA", location=loc); l=bpy.context.object; l.name=name; l.data.energy=power; l.data.shape="DISK"; l.data.size=size
         d=Vector((0,0,2.4))-l.location; l.rotation_euler=d.to_track_quat("-Z","Y").to_euler()
-    scene=bpy.context.scene; scene.render.engine="BLENDER_EEVEE_NEXT"
+    scene=bpy.context.scene; set_compatible_eevee(scene)
     scene.render.resolution_x=1200; scene.render.resolution_y=1200; scene.render.resolution_percentage=100
     scene.world.color=(0.12,0.12,0.12); scene.camera.data.lens=55
     scene.render.image_settings.file_format="PNG"
@@ -71,7 +80,7 @@ def create_crash_woods_cinema():
     """15-second PS1-style crash-dummy short: crash, exit, forest walk, moon pan."""
     clear_scene()
     scene=bpy.context.scene
-    scene.render.engine="BLENDER_EEVEE_NEXT"
+    set_compatible_eevee(scene)
     scene.render.resolution_x=320; scene.render.resolution_y=180; scene.render.resolution_percentage=100
     scene.render.fps=12; scene.frame_start=1; scene.frame_end=180
     scene.world.color=(0.006,0.009,0.025)
@@ -266,7 +275,7 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
         light.data.color=color
         light.rotation_euler=(Vector((0,0.8,1.8))-light.location).to_track_quat("-Z","Y").to_euler()
     scene=bpy.context.scene
-    scene.render.engine="BLENDER_EEVEE_NEXT"
+    set_compatible_eevee(scene)
     base_width=320 if ps1 else 480
     base_height=180 if ps1 else 270
     if aspect_ratio=="9:16": base_width,base_height=base_height,base_width
