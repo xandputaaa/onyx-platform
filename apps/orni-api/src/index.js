@@ -191,7 +191,7 @@ app.post("/api/orni/blender/scene/celvani-hoodie", requireAgentToken, async (_re
 app.post("/api/orni/blender/scene/retro-cinema", requireAgentToken, async (req,res) => {
   const base=(process.env.ORNI_BLENDER_API_URL||"").replace(/\/$/,"");
   if(!base||!process.env.ORNI_BLENDER_TOKEN) return res.status(503).json({error:"Blender private API is not configured."});
-  const style=req.body?.style==="ps2"?"ps2":"ps1";
+  const style=["ps2","crash-woods"].includes(req.body?.style)?req.body.style:"ps1";
   const duration=Math.max(3,Math.min(15,Number(req.body?.duration)||5));
   const aspectRatio=["9:16","16:9","1:1"].includes(req.body?.aspectRatio)?req.body.aspectRatio:"16:9";
   const caption=String(req.body?.caption||"").slice(0,120);
@@ -221,6 +221,28 @@ app.get("/api/orni/blender/retro-video", requireAgentToken, async (_req,res) => 
     res.set("Content-Type","video/mp4");res.set("Cache-Control","no-store");
     return res.send(Buffer.from(await r.arrayBuffer()));
   } catch { return res.status(502).json({error:"Could not retrieve the Blender retro MP4."}); }
+});
+
+
+app.get("/api/orni/blender/crash-woods-preview", requireAgentToken, async (_req,res) => {
+  const base=(process.env.ORNI_BLENDER_API_URL||"").replace(/\/$/,"");
+  if(!base||!process.env.ORNI_BLENDER_TOKEN) return res.status(503).json({error:"Blender private API is not configured."});
+  try {
+    const r=await fetch(base+"/outputs/orni_crash_woods_preview.png",{headers:{"Authorization":`Bearer ${process.env.ORNI_BLENDER_TOKEN}`},signal:AbortSignal.timeout(30000)});
+    if(!r.ok) return res.status(r.status).json(await r.json().catch(()=>({error:"Crash-woods preview not ready"})));
+    res.set("Content-Type","image/png");res.set("Cache-Control","no-store");
+    return res.send(Buffer.from(await r.arrayBuffer()));
+  } catch { return res.status(502).json({error:"Could not retrieve the crash-woods preview."}); }
+});
+app.get("/api/orni/blender/crash-woods-video", requireAgentToken, async (_req,res) => {
+  const base=(process.env.ORNI_BLENDER_API_URL||"").replace(/\/$/,"");
+  if(!base||!process.env.ORNI_BLENDER_TOKEN) return res.status(503).json({error:"Blender private API is not configured."});
+  try {
+    const r=await fetch(base+"/outputs/orni_crash_woods_15s.mp4",{headers:{"Authorization":`Bearer ${process.env.ORNI_BLENDER_TOKEN}`},signal:AbortSignal.timeout(30000)});
+    if(!r.ok) return res.status(r.status).json(await r.json().catch(()=>({error:"Crash-woods video not ready"})));
+    res.set("Content-Type","video/mp4");res.set("Cache-Control","no-store");
+    return res.send(Buffer.from(await r.arrayBuffer()));
+  } catch { return res.status(502).json({error:"Could not retrieve the crash-woods MP4."}); }
 });
 
 app.get("/api/orni/status", (_req, res) => {
