@@ -96,6 +96,14 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path=="/health": return self.reply(200,{"ok":True,"service":"orni-blender-control","blender":bpy.app.version_string})
         if self.path=="/outputs": return self.reply(200,{"files":[p.name for p in OUT.iterdir() if p.is_file()]})
+        if self.path in ("/outputs/celvani_hoodie_blockout.png","/outputs/celvani_hoodie_blockout.blend","/outputs/celvani_render.png"):
+            if not TOKEN or self.headers.get("Authorization")!="Bearer "+TOKEN: return self.reply(401,{"error":"unauthorized"})
+            path=OUT/self.path.rsplit("/",1)[-1]
+            if not path.is_file(): return self.reply(404,{"error":"file_not_ready"})
+            mime="image/png" if path.suffix==".png" else "application/octet-stream"
+            data=path.read_bytes()
+            self.send_response(200); self.send_header("Content-Type",mime); self.send_header("Content-Length",str(len(data))); self.send_header("Cache-Control","no-store"); self.end_headers(); self.wfile.write(data)
+            return
         return self.reply(404,{"error":"not_found"})
     def do_POST(self):
         if not TOKEN or self.headers.get("Authorization")!="Bearer "+TOKEN: return self.reply(401,{"error":"unauthorized"})
