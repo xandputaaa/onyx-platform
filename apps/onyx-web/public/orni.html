@@ -135,7 +135,7 @@ async function connectBlender(){
         frame.className="remote-view";frame.title="ORNI Blender remote desktop";
         frame.src=viewerUrl;frame.allow="fullscreen; clipboard-read; clipboard-write";
         frame.referrerPolicy="no-referrer";
-        viewport.classList.add("live");viewport.replaceChildren(frame);blenderFrameUrl=d.viewerUrl;
+        viewport.classList.add("live");viewport.replaceChildren(frame);blenderFrameUrl=viewerUrl;
       }
       feedTitle.textContent="Blender workspace connected";
       feedText.textContent="The remote Blender session is attached automatically.";
