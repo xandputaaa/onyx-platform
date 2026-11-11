@@ -44,21 +44,22 @@ app.get("/api/orni/ready", async (_req, res) => {
 });
 
 app.get("/api/orni/blender/status", async (_req, res) => {
-  const workerBase = (process.env.ORNI_BLENDER_BASE_URL || "").replace(/\/$/, "");
-  const viewerUrl = process.env.ORNI_BLENDER_VIEW_URL || "";
-  if (!workerBase) {
-    return res.json({
-      connected: false,
-      state: "not_configured",
-      message: "The Blender worker has not been provisioned or connected yet."
-    });
-  }
+  // Use the already-deployed Blender service by default; do not provision new infrastructure.
+  const workerBase = (process.env.ORNI_BLENDER_BASE_URL || "https://orni-blender-production.up.railway.app").replace(/\/$/, "");
+  const viewerUrl = process.env.ORNI_BLENDER_VIEW_URL || "https://orni-blender-production.up.railway.app/vnc.html?autoconnect=true&resize=remote&path=websockify";
   try {
-    const r = await fetch(`${workerBase}/`, { signal: AbortSignal.timeout(4000) });
-    const body = await r.json().catch(() => ({}));
-    return res.status(r.ok ? 200 : 502).json({ connected: r.ok, state: r.ok ? "connected" : "degraded", viewerUrl: viewerUrl || null, worker: body });
+    // noVNC serves vnc.html; the root path is not a reliable health check.
+    const r = await fetch(`${workerBase}/vnc.html`, { signal: AbortSignal.timeout(5000) });
+    const html = r.ok ? await r.text() : "";
+    const ready = r.ok && html.toLowerCase().includes("novnc");
+    return res.status(ready ? 200 : 502).json({
+      connected: ready,
+      state: ready ? "viewer_ready" : "degraded",
+      viewerUrl: ready ? viewerUrl : null,
+      message: ready ? "The existing Blender desktop and noVNC viewer are reachable." : "The Blender service is reachable but its noVNC viewer did not pass validation."
+    });
   } catch {
-    return res.status(502).json({ connected: false, state: "unreachable", viewerUrl: viewerUrl || null, message: "The configured Blender worker could not be reached." });
+    return res.status(502).json({ connected: false, state: "unreachable", viewerUrl: null, message: "The existing Blender service could not be reached. Automatic retries remain enabled." });
   }
 });
 
