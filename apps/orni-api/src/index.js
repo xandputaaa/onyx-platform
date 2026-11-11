@@ -7,13 +7,15 @@ app.use(helmet());
 app.use(express.json({ limit: "1mb" }));
 
 const startedAt = new Date().toISOString();
+const startedAtMs = Date.now();
 
 app.get("/health", (_req, res) => {
   res.status(200).json({
     ok: true,
     service: "orni-api",
-    status: "starting",
+    status: "healthy",
     startedAt,
+    uptimeSeconds: Math.floor((Date.now() - startedAtMs) / 1000),
     timestamp: new Date().toISOString()
   });
 });
