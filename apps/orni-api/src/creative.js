@@ -30,9 +30,9 @@ async function bodyToBuffer(body) {
 export function registerCreativeRoutes(app,{requireAgentToken}) {
   app.get("/api/orni/creative/status",requireAgentToken,(_req,res)=>{
     const storage=getStorage();
-    const provider=process.env.IMAGE_PROVIDER||"fal";
-    const keyReady=provider==="fal"?Boolean(process.env.FAL_KEY):Boolean(process.env.OPENAI_API_KEY);
-    res.json({ok:Boolean(storage&&keyReady),provider,imageModel:provider==="fal"?"FLUX.2 Pro": "gpt-image-2.6-sunburst",storage:storage?"connected":"not_configured",generation:keyReady});
+    const provider=process.env.IMAGE_PROVIDER||"cloudflare";
+    const keyReady=provider==="cloudflare"?Boolean(process.env.CLOUDFLARE_WORKER_URL&&process.env.ORNI_WORKER_TOKEN):provider==="fal"?Boolean(process.env.FAL_KEY):Boolean(process.env.OPENAI_API_KEY);
+    res.json({ok:Boolean(storage&&keyReady),provider,imageModel:provider==="cloudflare"?"black-forest-labs/flux-3-image-klein":provider==="fal"?"FLUX.2 Pro":"gpt-image-2.6-sunburst",videoModels:provider==="cloudflare"?["klingai/kling-v4-flash","minimax/h3-highspeed"]:[],storage:storage?"connected":"not_configured",generation:keyReady});
   });
   app.get("/api/orni/assets",requireAgentToken,async(_req,res)=>{
     const s3=getStorage(); if(!s3)return res.status(503).json({error:"CELVANI asset storage is not configured."});
@@ -60,9 +60,11 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
     }catch(error){console.error("ORNI asset upload failed",{name:error?.name});return res.status(502).json({error:"Could not save this image to the CELVANI library."});}
   });
   app.post("/api/orni/designs/generate",requireAgentToken,async(req,res)=>{
-    const provider=process.env.IMAGE_PROVIDER||"fal";
+    const provider=process.env.IMAGE_PROVIDER||"cloudflare";
     const apiKey=provider==="fal"?process.env.FAL_KEY:process.env.OPENAI_API_KEY;
-    if(!apiKey)return res.status(503).json({error:provider==="fal"?"Add FAL_KEY to the ORNI API Railway service to enable image generation.":"OpenAI image generation is not configured on ORNI."});
+    const workerReady=Boolean(process.env.CLOUDFLARE_WORKER_URL&&process.env.ORNI_WORKER_TOKEN);
+    if(provider==="cloudflare"&&!workerReady)return res.status(503).json({error:"Configure CLOUDFLARE_WORKER_URL and ORNI_WORKER_TOKEN on the ORNI API Railway service."});
+    if(provider!=="cloudflare"&&!apiKey)return res.status(503).json({error:provider==="fal"?"Add FAL_KEY to the ORNI API Railway service to enable image generation.":"OpenAI image generation is not configured on ORNI."});
     const s3=getStorage(); if(!s3)return res.status(503).json({error:"CELVANI asset storage is not configured."});
     const prompt=typeof req.body?.prompt==="string"?req.body.prompt.trim():"";
     const assetKeys=Array.isArray(req.body?.assetKeys)?req.body.assetKeys.filter(x=>typeof x==="string"&&x.startsWith("celvani/")).slice(0,4):[];
@@ -70,7 +72,22 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
     try{
       const fullPrompt=collectionContext+"\\n\\nUSER DESIGN BRIEF:\\n"+prompt;
       let imageBuffer,model,contentType="image/png";
-      if(provider==="fal"){
+      if(provider==="cloudflare"){
+        const imageUrls=[];
+        for(const key of assetKeys){
+          const obj=await s3.send(new GetObjectCommand({Bucket:process.env.ASSETS_S3_BUCKET,Key:key}));
+          imageUrls.push((await signedAsset(s3,key,key.split("/").pop(),obj.ContentType||"image/png")).url);
+        }
+        const workerUrl=process.env.CLOUDFLARE_WORKER_URL.replace(/\\/+$/,"");
+        const response=await fetch(workerUrl+"/image",{method:"POST",headers:{"Authorization":"Bearer "+process.env.ORNI_WORKER_TOKEN,"Content-Type":"application/json"},body:JSON.stringify({prompt:fullPrompt,images:imageUrls,resolution:"1k"}),signal:AbortSignal.timeout(240000)});
+        const result=await response.json().catch(()=>({}));
+        if(!response.ok||!result.output?.url)return res.status(response.status===429?429:502).json({error:result.error||"Cloudflare FLUX image generation failed.",provider:"cloudflare"});
+        const imageResponse=await fetch(result.output.url,{signal:AbortSignal.timeout(60000)});
+        if(!imageResponse.ok)return res.status(502).json({error:"Could not retrieve the generated image from Cloudflare FLUX."});
+        imageBuffer=Buffer.from(await imageResponse.arrayBuffer());
+        contentType=imageResponse.headers.get("content-type")||"image/png";
+        model=result.model||"black-forest-labs/flux-3-image-klein";
+      }else if(provider==="fal"){
         const imageUrls=[];
         for(const key of assetKeys){
           const obj=await s3.send(new GetObjectCommand({Bucket:process.env.ASSETS_S3_BUCKET,Key:key}));
@@ -118,6 +135,40 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
       const timedOut=error?.name==="TimeoutError"||error?.name==="AbortError";
       console.error("ORNI creative generation failed",{name:error?.name,timedOut});
       return res.status(timedOut?504:502).json({error:timedOut?"Image generation timed out.":"Could not complete the CELVANI image generation request.",provider});
+    }
+  });
+
+  app.post("/api/orni/videos/generate",requireAgentToken,async(req,res)=>{
+    const workerUrl=process.env.CLOUDFLARE_WORKER_URL?.replace(/\\/+$/,"");
+    const workerToken=process.env.ORNI_WORKER_TOKEN;
+    const s3=getStorage();
+    if(!workerUrl||!workerToken)return res.status(503).json({error:"Configure CLOUDFLARE_WORKER_URL and ORNI_WORKER_TOKEN on the ORNI API Railway service."});
+    if(!s3)return res.status(503).json({error:"CELVANI asset storage is not configured."});
+    const prompt=typeof req.body?.prompt==="string"?req.body.prompt.trim():"";
+    const model=req.body?.model==="minimax"?"minimax":"kling";
+    const duration=Number(req.body?.duration??5);
+    if(!prompt||prompt.length>26000)return res.status(400).json({error:"Write a video brief between 1 and 26000 characters."});
+    const assetKeys=Array.isArray(req.body?.assetKeys)?req.body.assetKeys.filter(x=>typeof x==="string"&&x.startsWith("celvani/")).slice(0,4):[];
+    try{
+      const referenceImages=[];
+      for(const key of assetKeys){
+        const obj=await s3.send(new GetObjectCommand({Bucket:process.env.ASSETS_S3_BUCKET,Key:key}));
+        referenceImages.push((await signedAsset(s3,key,key.split("/").pop(),obj.ContentType||"image/png")).url);
+      }
+      const response=await fetch(workerUrl+"/video",{method:"POST",headers:{"Authorization":"Bearer "+workerToken,"Content-Type":"application/json"},body:JSON.stringify({prompt,model,duration,aspect_ratio:req.body?.aspect_ratio||"9:16",reference_images:referenceImages}),signal:AbortSignal.timeout(300000)});
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok||!result.output?.url)return res.status(response.status===429?429:502).json({error:result.error||"Cloudflare video generation failed.",provider:"cloudflare",model});
+      const videoResponse=await fetch(result.output.url,{signal:AbortSignal.timeout(120000)});
+      if(!videoResponse.ok)return res.status(502).json({error:"Could not retrieve the generated video from Cloudflare."});
+      const videoBuffer=Buffer.from(await videoResponse.arrayBuffer());
+      const key="celvani/generated-video-"+Date.now()+"-"+randomUUID()+".mp4";
+      await s3.send(new PutObjectCommand({Bucket:process.env.ASSETS_S3_BUCKET,Key:key,Body:videoBuffer,ContentType:"video/mp4",Metadata:{originalname:"ORNI-generated-video.mp4"}}));
+      const asset=await signedAsset(s3,key,"ORNI generated video","video/mp4");
+      return res.json({ok:true,provider:"cloudflare",model:result.model||model,asset,generatedAt:new Date().toISOString()});
+    }catch(error){
+      const timedOut=error?.name==="TimeoutError"||error?.name==="AbortError";
+      console.error("ORNI video generation failed",{name:error?.name,timedOut});
+      return res.status(timedOut?504:502).json({error:timedOut?"Video generation timed out.":"Could not complete the CELVANI video generation request.",provider:"cloudflare"});
     }
   });
 }
