@@ -37,8 +37,10 @@ if [ "$READY" -ne 1 ]; then
 fi
 echo "[ORNI] Blender automation API is ready"
 
+cp /workspace/viewer.html /usr/share/novnc/orni.html
+
 cat > /usr/share/novnc/index.html <<'HTML'
-<!doctype html><html><head><meta http-equiv="refresh" content="0;url=/vnc.html?autoconnect=true&resize=remote&path=websockify"><title>ORNI Blender</title></head><body><a href="/vnc.html?autoconnect=true&resize=remote&path=websockify">Open Blender</a></body></html>
+<!doctype html><html><head><meta http-equiv="refresh" content="0;url=/orni.html"><title>ORNI Blender</title></head><body><a href="/orni.html">Open Blender</a></body></html>
 HTML
 
 echo "[ORNI] Starting noVNC gateway on port ${PORT:-6080}"
