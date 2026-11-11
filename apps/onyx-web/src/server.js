@@ -83,6 +83,15 @@ async function orniForward(req, res, route, method = "GET") {
 }
 app.get("/api/orni/reference-cinema", (req, res) => orniForward(req, res, "/api/orni/reference-cinema"));
 app.post("/api/orni/blender/scene/retro-cinema", (req,res) => orniForward(req,res,"/api/orni/blender/scene/retro-cinema","POST"));
+app.get("/api/orni/blender/retro-preview", async (_req,res) => {
+  if(!process.env.ORNI_ACCESS_TOKEN)return res.status(503).json({error:"ONYX-to-ORNI authentication is not configured."});
+  try{
+    const r=await fetch(orniBase+"/api/orni/blender/retro-preview",{headers:{"Authorization":"Bearer "+process.env.ORNI_ACCESS_TOKEN},signal:AbortSignal.timeout(30000)});
+    if(!r.ok)return res.status(r.status).json(await r.json().catch(()=>({error:"Retro preview not ready"})));
+    res.set("Content-Type","image/png");res.set("Cache-Control","no-store");
+    return res.send(Buffer.from(await r.arrayBuffer()));
+  }catch{return res.status(502).json({error:"Could not reach ORNI retro preview."});}
+});
 app.get("/api/orni/blender/retro-video", async (_req,res) => {
   if(!process.env.ORNI_ACCESS_TOKEN)return res.status(503).json({error:"ONYX-to-ORNI authentication is not configured."});
   try{
