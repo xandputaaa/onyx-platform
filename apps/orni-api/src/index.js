@@ -331,31 +331,42 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
   const timeout = setTimeout(() => controller.abort(), 45000);
 
   try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: orniSystemPrompt + "\\nReturn one JSON object matching the ORNI mission report schema. Do not include markdown fences or commentary." },
-          { role: "user", content: mission }
-        ],
-        max_completion_tokens: 1800,
-        temperature: 0.3,
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "orni_mission_report",
-            strict: true,
-            schema: missionReportSchema
-          }
+    const requestBody = {
+      model,
+      messages: [
+        { role: "system", content: orniSystemPrompt + "\\nReturn one concise JSON object matching the ORNI mission report schema. Keep each array to at most 3 concise items and avoid repeating information." },
+        { role: "user", content: mission }
+      ],
+      // Keep the requested completion small enough for Groq's free OTPM allowance.
+      max_completion_tokens: 512,
+      temperature: 0.3,
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "orni_mission_report",
+          strict: true,
+          schema: missionReportSchema
         }
-      }),
-      signal: controller.signal
-    });
+      }
+    };
+    let response;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+      if (response.status !== 429 || attempt === 1) break;
+      const retryAfter = Number(response.headers.get("retry-after") || "0");
+      const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(retryAfter * 1000, 35000)
+        : 8500;
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
 
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
