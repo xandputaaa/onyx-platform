@@ -34,7 +34,7 @@ function connect(password,remember){
   rfb.addEventListener("connect",()=>{setStatus("connected");gate.style.display="none";if(remember)sessionStorage.setItem("orni_vnc_password",password);});
   rfb.addEventListener("disconnect",event=>{setStatus(event.detail?.clean?"disconnected":"connection lost");});
   rfb.addEventListener("credentialsrequired",()=>{sessionStorage.removeItem("orni_vnc_password");try{rfb.disconnect()}catch{}showGate("Password was rejected. Please enter it again.");});
-  rfb.addEventListener("securityfailure",()=>{setStatus("security error");showGate("The VNC security handshake failed. Try reconnecting.");});
+  rfb.addEventListener("securityfailure",()=>{sessionStorage.removeItem("orni_vnc_password");try{rfb.disconnect()}catch{}setStatus("authentication failed");showGate("VNC authentication failed. Check the password and try again.");});
 }
 form.addEventListener("submit",event=>{event.preventDefault();const password=input.value;if(!password)return;connect(password,true);setStatus("authenticating");});
 const saved=sessionStorage.getItem("orni_vnc_password");
