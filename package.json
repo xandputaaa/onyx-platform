@@ -3,10 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node apps/orni-api/src/index.js",
-    "dev": "node --watch apps/orni-api/src/index.js"
+    "dev": "node --watch apps/orni-api/src/index.js",
+    "test": "NODE_ENV=test node --test"
   },
   "dependencies": {
     "express": "^5.1.0",
