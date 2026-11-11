@@ -32,6 +32,17 @@ app.get("/api/agents", async (_req, res) => {
   });
 });
 
+
+app.get("/api/orni/ready", async (_req, res) => {
+  try {
+    const r = await fetch(`${orniBase}/ready`, { signal: AbortSignal.timeout(5000) });
+    const body = await r.json().catch(() => ({ status: "unreadable" }));
+    return res.status(r.ok ? 200 : 503).json({ ...body, provider: "Groq" });
+  } catch {
+    return res.status(502).json({ ok: false, status: "unreachable", provider: "Groq" });
+  }
+});
+
 app.get("/api/orni/blender/status", async (_req, res) => {
   const workerBase = (process.env.ORNI_BLENDER_BASE_URL || "").replace(/\/$/, "");
   const viewerUrl = process.env.ORNI_BLENDER_VIEW_URL || "";
