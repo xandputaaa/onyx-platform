@@ -187,8 +187,9 @@ app.post("/api/orni/blender/scene/retro-cinema", requireAgentToken, async (req,r
   const style=req.body?.style==="ps2"?"ps2":"ps1";
   const duration=Math.max(3,Math.min(15,Number(req.body?.duration)||5));
   const aspectRatio=["9:16","16:9","1:1"].includes(req.body?.aspectRatio)?req.body.aspectRatio:"16:9";
+  const caption=String(req.body?.caption||"").slice(0,120);
   try {
-    const r=await fetch(base+"/api/scene/retro-cinema",{method:"POST",headers:{"Authorization":`Bearer ${process.env.ORNI_BLENDER_TOKEN}`,"Content-Type":"application/json"},body:JSON.stringify({style,duration,aspectRatio}),signal:AbortSignal.timeout(560000)});
+    const r=await fetch(base+"/api/scene/retro-cinema",{method:"POST",headers:{"Authorization":`Bearer ${process.env.ORNI_BLENDER_TOKEN}`,"Content-Type":"application/json"},body:JSON.stringify({style,duration,aspectRatio,caption}),signal:AbortSignal.timeout(560000)});
     return res.status(r.status).json(await r.json().catch(()=>({error:"Invalid Blender response"})));
   } catch(e) { return res.status(e?.name==="TimeoutError"?504:502).json({error:"Blender retro render timed out or worker is unavailable.",stage:"render"}); }
 });
