@@ -120,6 +120,25 @@ app.get("/api/orni/blender/crash-woods-video", async (_req,res) => {
     return res.send(Buffer.from(await r.arrayBuffer()));
   }catch{return res.status(502).json({error:"Could not reach ORNI crash-woods video output."});}
 });
+
+app.get("/api/orni/blender/crash-woods-blend", async (_req,res) => {
+  if(!process.env.ORNI_ACCESS_TOKEN)return res.status(503).json({error:"ONYX-to-ORNI authentication is not configured."});
+  try{
+    const r=await fetch(orniBase+"/api/orni/blender/crash-woods-blend",{headers:{"Authorization":"Bearer "+process.env.ORNI_ACCESS_TOKEN},signal:AbortSignal.timeout(30000)});
+    if(!r.ok)return res.status(r.status).json(await r.json().catch(()=>({error:"Crash-woods Blender file not ready"})));
+    res.set("Content-Type","application/octet-stream");res.set("Content-Disposition",'attachment; filename="ORNI-crash-woods.blend"');res.set("Cache-Control","no-store");
+    return res.send(Buffer.from(await r.arrayBuffer()));
+  }catch{return res.status(502).json({error:"Could not reach ORNI crash-woods Blender file."});}
+});
+app.get("/api/orni/blender/retro-blend", async (_req,res) => {
+  if(!process.env.ORNI_ACCESS_TOKEN)return res.status(503).json({error:"ONYX-to-ORNI authentication is not configured."});
+  try{
+    const r=await fetch(orniBase+"/api/orni/blender/retro-blend",{headers:{"Authorization":"Bearer "+process.env.ORNI_ACCESS_TOKEN},signal:AbortSignal.timeout(30000)});
+    if(!r.ok)return res.status(r.status).json(await r.json().catch(()=>({error:"Retro Blender file not ready"})));
+    res.set("Content-Type","application/octet-stream");res.set("Content-Disposition",'attachment; filename="ORNI-retro-cinema.blend"');res.set("Cache-Control","no-store");
+    return res.send(Buffer.from(await r.arrayBuffer()));
+  }catch{return res.status(502).json({error:"Could not reach ORNI retro Blender file."});}
+});
 app.get("/api/orni/creative/status", (req, res) => orniForward(req, res, "/api/orni/creative/status"));
 app.get("/api/orni/assets", (req, res) => orniForward(req, res, "/api/orni/assets"));
 app.post("/api/orni/assets", (req, res) => orniForward(req, res, "/api/orni/assets", "POST"));
