@@ -401,8 +401,9 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
     else:
         shots=[
             (1,(4.2,-7.8,3.35),(0,0.9,1.65)),
-            (max(2,int(scene.frame_end*0.34)),(2.7,-6.1,2.95),(0,0,2.0)),
-            (max(3,int(scene.frame_end*0.68)),(0.9,-4.3,2.55),(0,0,2.45)),
+            (max(2,int(scene.frame_end*0.24)),(2.7,-6.1,2.95),(0,0,2.0)),
+            (max(3,int(scene.frame_end*0.48)),(0.9,-4.3,2.55),(0,0,2.45)),
+            (max(4,int(scene.frame_end*0.74)),(2.2,-5.2,2.8),(0,0,1.9)),
             (scene.frame_end,(1.15,-4.5,2.5),(0,0,2.45))
         ]
         for frame,location,look_at in shots:
@@ -411,8 +412,29 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
             cam.keyframe_insert(data_path="location",frame=frame)
             cam.keyframe_insert(data_path="rotation_euler",frame=frame)
         for frame in range(1,scene.frame_end+1,4):
-            mouth.scale=(1,0.15 if (frame//4)%2 else 1.0,1)
+            mouth.scale=(1,1,0.25 if (frame//4)%2 else 1.0)
             mouth.keyframe_insert(data_path="scale",frame=frame)
+        # Shoulder-pivoted gestures, head nods and deliberate deadpan holds.
+        for side,arm in arms:
+            bpy.ops.object.select_all(action="DESELECT")
+            arm.select_set(True)
+            bpy.context.view_layer.objects.active=arm
+            bpy.context.scene.cursor.location=Vector((side*0.52,0,2.10))
+            bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+            gesture_keys=[
+                (1,0.0),
+                (max(2,int(scene.frame_end*0.16)),0.32 if side<0 else -0.32),
+                (max(3,int(scene.frame_end*0.34)),-0.22 if side<0 else 0.22),
+                (max(4,int(scene.frame_end*0.52)),0.48 if side<0 else -0.48),
+                (max(5,int(scene.frame_end*0.70)),-0.12 if side<0 else 0.12),
+                (scene.frame_end,0.0)
+            ]
+            for frame,angle in gesture_keys:
+                arm.rotation_euler[0]=angle
+                arm.keyframe_insert(data_path="rotation_euler",frame=frame)
+        for frame,angle in [(1,0.0),(max(2,int(scene.frame_end*0.18)),0.10),(max(3,int(scene.frame_end*0.42)),-0.08),(max(4,int(scene.frame_end*0.70)),0.13),(scene.frame_end,0.0)]:
+            head.rotation_euler[0]=angle
+            head.keyframe_insert(data_path="rotation_euler",frame=frame)
     if not ps1 and caption.strip():
         # Camera-parented subtitle card for the PS2 dialogue/meme format.
         words=caption.strip().split()
