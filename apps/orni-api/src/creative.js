@@ -30,7 +30,9 @@ async function bodyToBuffer(body) {
 export function registerCreativeRoutes(app,{requireAgentToken}) {
   app.get("/api/orni/creative/status",requireAgentToken,(_req,res)=>{
     const storage=getStorage();
-    res.json({ok:Boolean(storage&&process.env.OPENAI_API_KEY),provider:"openai",imageModel:"gpt-image-2.6-sunburst",storage:storage?"connected":"not_configured",generation:Boolean(process.env.OPENAI_API_KEY)});
+    const provider=process.env.IMAGE_PROVIDER||"fal";
+    const keyReady=provider==="fal"?Boolean(process.env.FAL_KEY):Boolean(process.env.OPENAI_API_KEY);
+    res.json({ok:Boolean(storage&&keyReady),provider,imageModel:provider==="fal"?"FLUX.2 Pro": "gpt-image-2.6-sunburst",storage:storage?"connected":"not_configured",generation:keyReady});
   });
   app.get("/api/orni/assets",requireAgentToken,async(_req,res)=>{
     const s3=getStorage(); if(!s3)return res.status(503).json({error:"CELVANI asset storage is not configured."});
@@ -58,39 +60,64 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
     }catch(error){console.error("ORNI asset upload failed",{name:error?.name});return res.status(502).json({error:"Could not save this image to the CELVANI library."});}
   });
   app.post("/api/orni/designs/generate",requireAgentToken,async(req,res)=>{
-    if(!process.env.OPENAI_API_KEY)return res.status(503).json({error:"OpenAI image generation is not configured on ORNI."});
+    const provider=process.env.IMAGE_PROVIDER||"fal";
+    const apiKey=provider==="fal"?process.env.FAL_KEY:process.env.OPENAI_API_KEY;
+    if(!apiKey)return res.status(503).json({error:provider==="fal"?"Add FAL_KEY to the ORNI API Railway service to enable image generation.":"OpenAI image generation is not configured on ORNI."});
     const s3=getStorage(); if(!s3)return res.status(503).json({error:"CELVANI asset storage is not configured."});
     const prompt=typeof req.body?.prompt==="string"?req.body.prompt.trim():"";
     const assetKeys=Array.isArray(req.body?.assetKeys)?req.body.assetKeys.filter(x=>typeof x==="string"&&x.startsWith("celvani/")).slice(0,4):[];
-    const previousResponseId=typeof req.body?.previousResponseId==="string"?req.body.previousResponseId:null;
     if(!prompt||prompt.length>6000)return res.status(400).json({error:"Write a design brief between 1 and 6000 characters."});
     try{
-      const content=[{type:"input_text",text:collectionContext+"\n\nUSER DESIGN BRIEF:\n"+prompt}];
-      {
+      const fullPrompt=collectionContext+"\\n\\nUSER DESIGN BRIEF:\\n"+prompt;
+      let imageBuffer,model,contentType="image/png";
+      if(provider==="fal"){
+        const imageUrls=[];
         for(const key of assetKeys){
           const obj=await s3.send(new GetObjectCommand({Bucket:process.env.ASSETS_S3_BUCKET,Key:key}));
           const bytes=await bodyToBuffer(obj.Body);
           if(bytes.length>maxImageBytes)continue;
-          const mime=obj.ContentType||"image/png";
-          content.push({type:"input_image",image_url:"data:"+mime+";base64,"+bytes.toString("base64")});
+          imageUrls.push("data:"+(obj.ContentType||"image/png")+";base64,"+bytes.toString("base64"));
         }
+        const endpoint=imageUrls.length?"https://fal.run/fal-ai/flux-2-pro/edit":"https://fal.run/fal-ai/flux-2-pro";
+        const input=imageUrls.length?{prompt:fullPrompt,image_urls:imageUrls,image_size:"square_hd",output_format:"png"}:{prompt:fullPrompt,image_size:"square_hd",output_format:"png"};
+        const response=await fetch(endpoint,{method:"POST",headers:{"Authorization":"Key "+apiKey,"Content-Type":"application/json"},body:JSON.stringify(input),signal:AbortSignal.timeout(180000)});
+        const result=await response.json().catch(()=>({}));
+        if(!response.ok){
+          const message=result?.detail?.[0]?.msg||result?.detail||result?.error||"FLUX image generation request failed.";
+          console.error("ORNI fal image provider error",{status:response.status});
+          return res.status(response.status===429?429:502).json({error:typeof message==="string"?message:"FLUX provider rejected the request.",provider:"fal",providerStatus:response.status});
+        }
+        const output=result.images?.[0];
+        if(!output?.url)return res.status(502).json({error:"FLUX returned no completed image. Try a shorter brief or fewer references."});
+        const imageResponse=await fetch(output.url,{signal:AbortSignal.timeout(60000)});
+        if(!imageResponse.ok)return res.status(502).json({error:"Could not retrieve the generated image from FLUX."});
+        imageBuffer=Buffer.from(await imageResponse.arrayBuffer());
+        contentType=output.content_type||imageResponse.headers.get("content-type")||"image/png";
+        model=imageUrls.length?"fal-ai/flux-2-pro/edit":"fal-ai/flux-2-pro";
+      }else{
+        const content=[{type:"input_text",text:fullPrompt}];
+        for(const key of assetKeys){
+          const obj=await s3.send(new GetObjectCommand({Bucket:process.env.ASSETS_S3_BUCKET,Key:key}));
+          const bytes=await bodyToBuffer(obj.Body);
+          if(bytes.length<=maxImageBytes)content.push({type:"input_image",image_url:"data:"+(obj.ContentType||"image/png")+";base64,"+bytes.toString("base64")});
+        }
+        const payload={model:"gpt-5.5",tools:[{type:"image_generation",model:"gpt-image-2.6-sunburst",action:assetKeys.length?"auto":"generate"}],input:[{role:"user",content}]};
+        const response=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{"Authorization":"Bearer "+apiKey,"Content-Type":"application/json"},body:JSON.stringify(payload),signal:AbortSignal.timeout(120000)});
+        const result=await response.json().catch(()=>({}));
+        if(!response.ok)return res.status(response.status===429?429:502).json({error:result?.error?.message||"Image generation provider request failed.",provider:"openai"});
+        const call=(result.output||[]).find(item=>item.type==="image_generation_call"&&item.result);
+        if(!call?.result)return res.status(502).json({error:"The image model returned no completed image."});
+        imageBuffer=Buffer.from(call.result,"base64");model="gpt-image-2.6-sunburst";contentType="image/png";
       }
-      const payload={model:"gpt-5.5",tools:[{type:"image_generation",model:"gpt-image-2.6-sunburst",action:(assetKeys.length||previousResponseId)?"auto":"generate"}],input:[{role:"user",content}]};
-      if(previousResponseId)payload.previous_response_id=previousResponseId;
-      const response=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{"Authorization":"Bearer "+process.env.OPENAI_API_KEY,"Content-Type":"application/json"},body:JSON.stringify(payload),signal:AbortSignal.timeout(120000)});
-      const result=await response.json().catch(()=>({}));
-      if(!response.ok){const message=result?.error?.message||"Image generation provider request failed.";console.error("ORNI image provider error",{status:response.status,code:result?.error?.code});return res.status(response.status===429?429:502).json({error:message,provider:"openai",providerStatus:response.status});}
-      const call=(result.output||[]).find(item=>item.type==="image_generation_call"&&item.result);
-      if(!call?.result)return res.status(502).json({error:"The image model returned no completed image. Try a shorter brief or fewer references."});
-      const imageBuffer=Buffer.from(call.result,"base64");
-      const key="celvani/generated-"+Date.now()+"-"+randomUUID()+".png";
-      await s3.send(new PutObjectCommand({Bucket:process.env.ASSETS_S3_BUCKET,Key:key,Body:imageBuffer,ContentType:"image/png",Metadata:{originalname:"ORNI-generated-design.png"}}));
-      const asset=await signedAsset(s3,key,"ORNI generated design","image/png");
-      return res.json({ok:true,provider:"openai",model:"gpt-image-2.6-sunburst",responseId:result.id||null,asset,generatedAt:new Date().toISOString()});
+      const extension=contentType.includes("jpeg")?"jpg":contentType.includes("webp")?"webp":"png";
+      const key="celvani/generated-"+Date.now()+"-"+randomUUID()+"."+extension;
+      await s3.send(new PutObjectCommand({Bucket:process.env.ASSETS_S3_BUCKET,Key:key,Body:imageBuffer,ContentType:contentType,Metadata:{originalname:"ORNI-generated-design."+extension}}));
+      const asset=await signedAsset(s3,key,"ORNI generated design",contentType);
+      return res.json({ok:true,provider,model,asset,generatedAt:new Date().toISOString()});
     }catch(error){
       const timedOut=error?.name==="TimeoutError"||error?.name==="AbortError";
       console.error("ORNI creative generation failed",{name:error?.name,timedOut});
-      return res.status(timedOut?504:502).json({error:timedOut?"Image generation timed out.":"Could not complete the CELVANI image generation request."});
+      return res.status(timedOut?504:502).json({error:timedOut?"Image generation timed out.":"Could not complete the CELVANI image generation request.",provider});
     }
   });
 }
