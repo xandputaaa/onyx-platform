@@ -1,11 +1,12 @@
 import express from "express";
 import helmet from "helmet";
+import { registerCreativeRoutes } from "./creative.js";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 
 const app = express();
 app.disable("x-powered-by");
 app.use(helmet());
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "24mb" }));
 
 const startedAt = new Date().toISOString();
 const startedAtMs = Date.now();
@@ -66,6 +67,8 @@ Return a concise structured report with these fields:
 - nextActions
 
 Do not imply that a recommendation is an executed action. Return only data matching the supplied JSON schema.`;
+
+registerCreativeRoutes(app, { requireAgentToken, systemPrompt: orniSystemPrompt });
 
 app.get("/health", (_req, res) => {
   res.status(200).json({
