@@ -1,0 +1,15 @@
+{
+  "name": "onyx-platform-orni-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node apps/orni-api/src/index.js",
+    "dev": "node --watch apps/orni-api/src/index.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "helmet": "^8.1.0"
+  }
+}
