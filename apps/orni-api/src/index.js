@@ -42,7 +42,7 @@ function requireAgentToken(req, res, next) {
 
 
 const referenceCinemaPlaybook = `
-ORNI REFERENCE CINEMA PLAYBOOK — VERSION 2.0 — PERMANENT PRODUCTION STANDARD
+ORNI REFERENCE CINEMA PLAYBOOK — VERSION 2.1 — PERMANENT PRODUCTION STANDARD
 These references are mandatory craft knowledge, not optional inspiration. Apply them to every retro animation, PS1/PS2 game cinematic, character short, fashion film and CELVANI campaign. Choose the correct style family; do not blend them carelessly.
 
 SOURCE REFERENCES
@@ -64,6 +64,37 @@ Never take a modern photoreal render and merely shrink or pixelate it. It must l
 10. PIXEL PIPELINE: render deliberately low internal resolution, then upscale nearest-neighbor. Preserve crisp pixels; no bilinear blur, AI upscale or glossy modern effects. Apply quantization/dithering intentionally. Document master and delivery dimensions.
 11. EXPORT: preview first, review the entire preview, fix issues, render final frames, encode via FFmpeg, validate duration/FPS/dimensions/playback/audio sync. Save editable .blend, preview PNG and final MP4; clean temporary frames only after successful encode.
 12. QUALITY: check silhouette, UV seams, texture readability, style consistency, camera staging, animation arcs, foot contact, object permanence, flicker, z-fighting, clipping, pacing and encode. A blockout is never a finished piece.
+
+MANDATORY REVISION GATE — CRASH-WOODS FEEDBACK (VERSION 2.1)
+The first ORNI crash-woods output is a rejected gray-box prototype, not a style reference and not a finished deliverable. Do not reuse its scene as a final base without rebuilding the art direction and assets.
+
+A. PS1/PS2 STYLE COHESION
+- Treat the Luca Maxim / @santeluca early-2000s cutscene language and the two PSX tutorials as references for deliberate retro craft, not as permission to use generic primitives.
+- The crash-woods brief belongs to the PS1/PS2 retro family. It must use coherent palette, texture density, pixel scale, fog, lighting, camera language and animation timing from shot to shot.
+- Create actual authored texture assets: small photographic or hand-painted diffuse maps, dirt/grime/wear masks, road and bark textures, foliage variation, car paint/wear, glass, and crash-dummy surface detail. Pack reusable UV atlases where practical. Nearest-neighbour sampling and low-res texture resolution are mandatory; a 16x16 procedural tint/noise patch alone does NOT count as meaningful texture work.
+- Add intentional color quantization, restrained dithering, distance fog, controlled texture wobble/vertex jitter only where suitable. Do not confuse dark exposure or flat untextured materials with PSX authenticity.
+
+B. PURPOSE-BUILT ASSETS — NO PRIMITIVE GRAY-BOX SHORTCUTS
+- Blockout primitives may be used only for early layout. Final shots require purpose-built silhouettes and custom mesh forms for the character, vehicle, trees, road props and environment.
+- Car: coherent recognizable body proportions, hood/trunk transitions, wheel arches, windows, bumpers, lamps, tires, interior and damage details; avoid a stack of cubes.
+- Crash dummy: purpose-built faceted head, torso, pelvis, hands, feet and articulated limbs with visible joint design. Use a real armature where feasible; otherwise named pivot groups with tested pivots. No floating disconnected blocks.
+- Forest: layered tree silhouettes with varied canopy shapes, trunk geometry, undergrowth, roadside debris, ground texture and depth cues. Avoid repeated default cones as the dominant environment design.
+- Use custom mesh construction, bevel control and silhouette checks. A low polygon count is an art direction constraint, not an excuse for unfinished geometry.
+
+C. CINEMATOGRAPHY AND ANIMATION
+- Build a storyboard and timecoded shot list before modeling. The crash, dummy exit, walk and moon reveal each need a readable motivated composition.
+- Use deliberate shot changes, tracking/lead room, screen direction, impact framing, reaction hold, and a composed moon reveal. No camera clipping, unexplained camera falls or accidental geometry intersections.
+- The dummy must visibly occupy the cabin, react to impact, exit through a visible door/opening, establish ground contact, then walk with alternating limbs, planted feet, body weight and secondary motion. The car must stop and remain spatially coherent.
+- Review silhouettes and key poses at the actual delivery aspect ratio before full rendering.
+
+D. MODERN 3D POLISH IS A SEPARATE PRESET / BENCHMARK
+- The Louis Vuitton Default Cube challenge is a modern high-fidelity reference, not the target look for the retro crash-woods film. Its lessons—refined materials, physically based shading, controlled reflections, rich lighting, physics, compositing and cinematic camera work—belong in a separate modern-luxury preset.
+- Never combine photoreal glossy shaders with PSX pixel art unless the brief explicitly asks for a hybrid. Select one coherent visual language per film and explain the choice.
+
+E. ACCEPTANCE GATE
+- Do not label a render production-ready because FFmpeg decoded it or because a 16x16 texture was attached to each material.
+- Require visual evidence for: authored UV texture readability; custom silhouettes; coherent art direction; readable crash and exit; believable walk cycle and foot contact; camera staging; no clipping; deliberate lighting/fog; final frame composition.
+- If any critical item fails, report “prototype / revision required” and do not call it finished. Deliver a contact sheet or style-frame preview for review before a costly full render. Keep all production free-only.
 
 PRESET 2 — PS2 CUTSCENE / DEADPAN CHARACTER COMEDY
 Keep separate from PS1. Aim for a 2000s console cutscene: recognizable expressive character, simpler low-texture world, deliberate cinematic framing, direct-to-camera or conversational composition, restrained mouth motion, deadpan timing, purposeful silence and a small number of motivated cuts. Structure: setup → character hold → statement/rant → pause → punchline/final line → end hold. The joke lands through performance and pacing, not random movement. Original scripts and characters only.
@@ -116,7 +147,7 @@ Do not imply that a recommendation is an executed action. Return only data match
 
 registerCreativeRoutes(app, { requireAgentToken, systemPrompt: orniSystemPrompt });
 
-app.get("/api/orni/reference-cinema", requireAgentToken, (_req,res) => res.json({ok:true,engine:"Blender + Python + FFmpeg",freeOnly:true,presets:[{id:"ps1",name:"PS1 Low-Poly Retro",references:[{creator:"DUMBDAYS!",title:"How to make PS1 / low-poly / retro animations in Blender",role:"animation and retro scene workflow",url:"https://youtu.be/MxTz8vNY7XE"},{creator:"NoPoly",title:"How to make PSX/PS1 Graphics For Game Development In Blender",role:"PSX graphics workflow using Blender and Photoshop",url:"https://www.youtube.com/watch?v=nDaon0o_qoM"}],summary:"DUMBDAYS! reference: the published chapter sequence from project settings and idea development through character creation/texturing/rigging, environment, animation blocking/cameras, fine-tuning, pixel render, export and final touches. NoPoly reference: its published description confirms a Blender + Photoshop workflow for PSX graphics; ORNI does not attribute unverified techniques to that video. ORNI adds its own free-tool PSX standards for UVs, restrained vertex effects, nearest-neighbor upscale and evidence-based QA."},{id:"ps2-cutscene",name:"PS2 Cutscene Comedy",reference:"Luca Maxim TikTok format",summary:"Stylized game character, deadpan dialogue framing, cinematic cuts, pauses, captions and nostalgic early-2000s game look."}],playbookVersion:"2.0",referenceCount:3,knowledgeSource:"permanent embedded ORNI production standard"}));
+app.get("/api/orni/reference-cinema", requireAgentToken, (_req,res) => res.json({ok:true,engine:"Blender + Python + FFmpeg",freeOnly:true,presets:[{id:"ps1",name:"PS1 Low-Poly Retro",references:[{creator:"DUMBDAYS!",title:"How to make PS1 / low-poly / retro animations in Blender",role:"animation and retro scene workflow",url:"https://youtu.be/MxTz8vNY7XE"},{creator:"NoPoly",title:"How to make PSX/PS1 Graphics For Game Development In Blender",role:"PSX graphics workflow using Blender and Photoshop",url:"https://www.youtube.com/watch?v=nDaon0o_qoM"}],summary:"DUMBDAYS! reference: the published chapter sequence from project settings and idea development through character creation/texturing/rigging, environment, animation blocking/cameras, fine-tuning, pixel render, export and final touches. NoPoly reference: its published description confirms a Blender + Photoshop workflow for PSX graphics; ORNI does not attribute unverified techniques to that video. ORNI adds its own free-tool PSX standards for UVs, restrained vertex effects, nearest-neighbor upscale and evidence-based QA."},{id:"ps2-cutscene",name:"PS2 Cutscene Comedy",reference:"Luca Maxim TikTok format",summary:"Stylized game character, deadpan dialogue framing, cinematic cuts, pauses, captions and nostalgic early-2000s game look."}],playbookVersion:"2.1",referenceCount:3,knowledgeSource:"permanent embedded ORNI production standard"}));
 
 app.get("/health", (_req, res) => {
   res.status(200).json({
