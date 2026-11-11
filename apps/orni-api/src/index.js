@@ -78,6 +78,20 @@ app.get("/health", (_req, res) => {
   });
 });
 
+app.get("/ready", (_req, res) => {
+  const missing = [];
+  if (!process.env.ORNI_ACCESS_TOKEN) missing.push("ORNI_ACCESS_TOKEN");
+  if (!process.env.OPENAI_API_KEY) missing.push("OPENAI_API_KEY");
+  const ready = missing.length === 0;
+  res.status(ready ? 200 : 503).json({
+    ok: ready,
+    service: "orni-api",
+    status: ready ? "ready" : "not_ready",
+    missing,
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get("/api/orni/profile", (_req, res) => {
   res.status(200).json({
     agent: "ORNI",
@@ -256,13 +270,18 @@ app.get("/", (_req, res) => {
     name: "ORNI API",
     description: "CELVANI specialist service within the ONYX platform monorepo",
     health: "/health",
+    readiness: "/ready",
     profile: "/api/orni/profile",
     status: "/api/orni/status",
     mission: "POST /api/orni/mission"
   });
 });
 
-const port = Number(process.env.PORT || 3000);
-app.listen(port, "0.0.0.0", () => {
-  console.log(`ORNI API listening on port ${port}`);
-});
+export { app };
+
+if (process.env.NODE_ENV !== "test") {
+  const port = Number(process.env.PORT || 3000);
+  app.listen(port, "0.0.0.0", () => {
+    console.log(`ORNI API listening on port ${port}`);
+  });
+}
