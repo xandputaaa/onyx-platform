@@ -192,6 +192,18 @@ app.post("/api/orni/blender/scene/retro-cinema", requireAgentToken, async (req,r
     return res.status(r.status).json(await r.json().catch(()=>({error:"Invalid Blender response"})));
   } catch(e) { return res.status(e?.name==="TimeoutError"?504:502).json({error:"Blender retro render timed out or worker is unavailable.",stage:"render"}); }
 });
+
+app.get("/api/orni/blender/retro-preview", requireAgentToken, async (_req,res) => {
+  const base=(process.env.ORNI_BLENDER_API_URL||"").replace(/\/$/,"");
+  if(!base||!process.env.ORNI_BLENDER_TOKEN) return res.status(503).json({error:"Blender private API is not configured."});
+  try {
+    const r=await fetch(base+"/outputs/orni_retro_preview.png",{headers:{"Authorization":`Bearer ${process.env.ORNI_BLENDER_TOKEN}`},signal:AbortSignal.timeout(30000)});
+    if(!r.ok) return res.status(r.status).json(await r.json().catch(()=>({error:"Retro preview not ready"})));
+    res.set("Content-Type","image/png");res.set("Cache-Control","no-store");
+    return res.send(Buffer.from(await r.arrayBuffer()));
+  } catch { return res.status(502).json({error:"Could not retrieve the Blender retro preview."}); }
+});
+
 app.get("/api/orni/blender/retro-video", requireAgentToken, async (_req,res) => {
   const base=(process.env.ORNI_BLENDER_API_URL||"").replace(/\/$/,"");
   if(!base||!process.env.ORNI_BLENDER_TOKEN) return res.status(503).json({error:"Blender private API is not configured."});
