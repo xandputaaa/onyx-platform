@@ -361,21 +361,35 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
     if (!response.ok) {
       const providerError = payload?.error || {};
       const limited = response.status === 429;
-      const retryAfter = response.headers.get("retry-after");
+      const header = (name) => response.headers.get(name);
+      const rateLimit = {
+        limitRequests: header("x-ratelimit-limit-requests"),
+        remainingRequests: header("x-ratelimit-remaining-requests"),
+        resetRequests: header("x-ratelimit-reset-requests"),
+        limitTokens: header("x-ratelimit-limit-tokens"),
+        remainingTokens: header("x-ratelimit-remaining-tokens"),
+        resetTokens: header("x-ratelimit-reset-tokens"),
+        retryAfter: header("retry-after")
+      };
       console.error("ORNI model provider returned an error", {
         status: response.status,
         type: providerError.type,
-        code: providerError.code
+        code: providerError.code,
+        message: providerError.message || null,
+        model,
+        rateLimit
       });
       return res.status(limited ? 429 : 502).json({
-        error: limited ? "ORNI provider rate or quota limit reached" : "ORNI model provider request failed",
+        error: limited ? "ORNI provider rejected the request" : "ORNI model provider request failed",
         category: limited ? "provider_rate_limited" : "provider_error",
         providerStatus: response.status,
         providerType: providerError.type || null,
         providerCode: providerError.code || null,
-        retryAfter: retryAfter || null,
+        providerMessage: providerError.message || null,
+        model,
+        rateLimit,
         action: limited
-          ? "Check Groq Console billing, usage limits, and rate limits for the GROQ_API_KEY configured on the ORNI Railway service."
+          ? "Inspect providerMessage and rateLimit headers to distinguish token-per-minute, request-per-minute, daily quota, and account-level restrictions. No billing change is assumed necessary."
           : "Check the ORNI provider configuration and deployment logs."
       });
     }
