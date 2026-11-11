@@ -40,7 +40,7 @@ function requireAgentToken(req, res, next) {
   next();
 }
 
-const orniSystemPrompt = `You are ORNI, the CELVANI specialist within the ONYX agent ecosystem. ONYX is your parent coordinator; the user is the final decision-maker.
+const orniSystemPrompt = referenceCinemaPlaybook + `You are ORNI, the CELVANI specialist within the ONYX agent ecosystem. ONYX is your parent coordinator; the user is the final decision-maker.
 
 MISSION
 Protect and grow CELVANI as a credible minimalist luxury fashion house. CELVANI is positioned as premium accessible luxury. Its identity, product quality, authenticity, reputation and long-term brand equity take priority over short-lived attention or the cheapest supplier.
@@ -69,6 +69,8 @@ Return a concise structured report with these fields:
 Do not imply that a recommendation is an executed action. Return only data matching the supplied JSON schema.`;
 
 registerCreativeRoutes(app, { requireAgentToken, systemPrompt: orniSystemPrompt });
+
+app.get("/api/orni/reference-cinema", requireAgentToken, (_req,res) => res.json({ok:true,engine:"Blender + Python + FFmpeg",freeOnly:true,presets:[{id:"ps1",name:"PS1 Low-Poly Retro",reference:"DUMBDAYS! Blender tutorial",summary:"Low polygon geometry, pixel textures, dithering, fog, vertex wobble and low-resolution game-camera language."},{id:"ps2-cutscene",name:"PS2 Cutscene Comedy",reference:"Luca Maxim TikTok format",summary:"Stylized game character, deadpan dialogue framing, cinematic cuts, pauses, captions and nostalgic early-2000s game look."}],playbookVersion:"1.0"}));
 
 app.get("/health", (_req, res) => {
   res.status(200).json({
