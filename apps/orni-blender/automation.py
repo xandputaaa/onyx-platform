@@ -189,7 +189,7 @@ def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""
         raise RuntimeError("Blender did not save the editable retro scene.")
     if not video_file.is_file() or video_file.stat().st_size<1024:
         raise RuntimeError("Blender did not produce a valid retro MP4. Check FFmpeg support and render logs.")
-    return {"ok":True,"scene":"ORNI "+("PS1 low-poly" if ps1 else "PS2 cutscene")+" retro cinema","style":style,"blend":"/outputs/orni_retro_cinema.blend","preview":"/outputs/orni_retro_preview.png","video":"/outputs/orni_retro_cinema.mp4","frames":scene.frame_end,"fps":12,"durationSeconds":duration,"aspectRatio":aspect_ratio,"note":"Procedural proof-of-pipeline scene. Replace the placeholder character and set with approved CELVANI assets for production campaigns. PS2 mouth motion is a timing placeholder; no dialogue or audio is included."}
+    return {"ok":True,"scene":"ORNI "+("PS1 low-poly" if ps1 else "PS2 cutscene")+" retro cinema","style":style,"blend":"/outputs/orni_retro_cinema.blend","preview":"/outputs/orni_retro_preview.png","video":"/outputs/orni_retro_cinema.mp4","frames":scene.frame_end,"fps":12,"durationSeconds":duration,"aspectRatio":aspect_ratio,"note":"Procedural proof-of-pipeline scene. Replace the placeholder character and set with approved CELVANI assets for production campaigns. PS2 mouth motion is a timing placeholder; optional on-screen dialogue caption is included, but no voice or audio is generated."}
 
 
 JOBS=queue.Queue()
