@@ -58,17 +58,17 @@ textarea{width:100%;min-height:135px;resize:vertical;background:#0c0e10;border:1
 </div>
 
 <section class="panel" id="creative" style="margin-top:14px">
-  <div class="section-head"><div><div class="eyebrow">CELVANI · VISUAL DEVELOPMENT</div><h2 style="margin-top:5px">Creative Studio</h2><p class="muted small">Generate concepts, upload references, and evolve existing designs without losing the original direction.</p></div><span class="state" id="creativeState">CONNECTING</span></div>
+  <div class="section-head"><div><div class="eyebrow">CELVANI · VISUAL DEVELOPMENT</div><h2 style="margin-top:5px">Creative Studio</h2><p class="muted small">Drop 001 is the design foundation. ORNI must build forward from your actual garments, graphics, embroidery, and proportions.</p></div><span class="state" id="creativeState">CONNECTING</span></div>
   <div class="creative-grid">
     <div>
       <label class="upload-label" for="assetUpload">＋ Add reference photos</label>
       <input id="assetUpload" type="file" accept="image/png,image/jpeg,image/webp,image/avif" multiple>
-      <div class="creative-status" id="uploadStatus">Upload sketches, product photos, fabric references, logos, or earlier CELVANI concepts.</div>
+      <div class="creative-status" id="uploadStatus">Upload the Drop 001 board and individual product images. Selected references guide every new CELVANI concept.</div>
       <div class="asset-grid" id="assetGrid"></div>
     </div>
     <div>
       <div class="eyebrow">DESIGN BRIEF</div>
-      <textarea class="creative-prompt" id="designPrompt" maxlength="6000" placeholder="Example: Keep the exact hoodie silhouette from the selected reference. Create a deep espresso-brown colorway, preserve the oversized Yeezy Gap proportions, and show front and back product views."></textarea>
+      <textarea class="creative-prompt" id="designPrompt" maxlength="6000" placeholder="Drop 001 direction: develop a new CELVANI piece that belongs beside the uploaded black embroidered hoodie, burgundy tonal hoodie, duck graphic tee, emblem tee, and distressed denim. Preserve the existing emblem and construction language. Show front and back views."></textarea>
       <div class="creative-actions"><button id="generateDesign">Generate / edit design</button><button id="clearRefs" type="button" style="background:#24292e;color:#e7e9eb">Clear selection</button></div>
       <div class="creative-status" id="designStatus">FLUX 2 Pro image generation · Groq design intelligence</div>
     </div>
@@ -119,7 +119,43 @@ textarea{width:100%;min-height:135px;resize:vertical;background:#0c0e10;border:1
 const state=document.getElementById("agentState"),workerState=document.getElementById("workerState"),streamState=document.getElementById("streamState"),feedTitle=document.getElementById("feedTitle"),feedText=document.getElementById("feedText"),notice=document.getElementById("workerNotice");
 fetch("/api/agents").then(r=>r.json()).then(d=>{const a=d.agents.find(x=>x.id==="orni");state.textContent="ORNI · "+(a?.status||"UNKNOWN").toUpperCase();}).catch(()=>state.textContent="ORNI · UNREACHABLE");
 fetch("/api/orni/ready").then(async r=>({ok:r.ok,body:await r.json()})).then(({ok,body})=>{const el=document.getElementById("missionState");el.textContent=ok&&body.ok?"GROQ READY · "+(body.status||"ready").toUpperCase():"GROQ NOT READY · "+(body.missing||[]).join(", ");}).catch(()=>document.getElementById("missionState").textContent="READINESS CHECK UNAVAILABLE");
-fetch("/api/orni/blender/status").then(r=>r.json()).then(d=>{workerState.textContent="WORKER: "+String(d.state||"unknown").replaceAll("_"," ").toUpperCase();if(d.viewerUrl){const frame=document.createElement("iframe");frame.className="remote-view";frame.title="ORNI Blender remote desktop";frame.src=d.viewerUrl;frame.allow="fullscreen; clipboard-read; clipboard-write";frame.referrerPolicy="no-referrer";document.getElementById("viewport").classList.add("live");document.getElementById("viewport").replaceChildren(frame);feedTitle.textContent="Live Blender desktop";feedText.textContent="Connected through the configured remote desktop viewer.";streamState.textContent="STREAM: VIEWER CONFIGURED";document.getElementById("blenderCapability").textContent="Remote desktop viewer configured";notice.textContent="Remote desktop viewer URL is configured. Live frames depend on the worker and viewer remaining online."; }else{feedTitle.textContent=d.connected?"Worker online · viewer not configured":"Blender remote workspace ready";feedText.textContent=d.message||"Configure ORNI_BLENDER_VIEW_URL to attach the secure remote desktop viewer.";document.getElementById("blenderCapability").textContent=d.connected?"Worker online; viewer pending":"Remote desktop not configured";notice.textContent="Live workaround: run Blender in a remote desktop container and publish its noVNC/websockify viewer over HTTPS. Set ORNI_BLENDER_VIEW_URL on ONYX to embed that real session here. Do not expose an unauthenticated viewer.";}}).catch(()=>{workerState.textContent="WORKER: UNREACHABLE";});
+let blenderFrameUrl="";
+async function connectBlender(){
+  try{
+    const response=await fetch("/api/orni/blender/status",{cache:"no-store"});
+    const d=await response.json();
+    workerState.textContent="WORKER: "+String(d.state||"unknown").replaceAll("_"," ").toUpperCase();
+    const viewport=document.getElementById("viewport");
+    if(d.viewerUrl){
+      if(blenderFrameUrl!==d.viewerUrl){
+        const frame=document.createElement("iframe");
+        frame.className="remote-view";frame.title="ORNI Blender remote desktop";
+        frame.src=d.viewerUrl;frame.allow="fullscreen; clipboard-read; clipboard-write";
+        frame.referrerPolicy="no-referrer";
+        viewport.classList.add("live");viewport.replaceChildren(frame);blenderFrameUrl=d.viewerUrl;
+      }
+      feedTitle.textContent="Blender workspace connected";
+      feedText.textContent="The remote Blender session is attached automatically.";
+      streamState.textContent="STREAM: CONNECTED";
+      document.getElementById("blenderCapability").textContent="Blender viewer connected";
+      notice.textContent="Blender connects automatically whenever ORNI Studio opens. Reconnection checks continue in the background.";
+    }else{
+      blenderFrameUrl="";
+      streamState.textContent=d.connected?"STREAM: WAITING FOR VIEWER":"STREAM: WAITING FOR WORKER";
+      feedTitle.textContent=d.connected?"Blender worker online · viewer starting":"Waiting for Blender worker";
+      feedText.textContent=d.message||"The workspace will attach automatically when the Blender worker and secure viewer are configured.";
+      document.getElementById("blenderCapability").textContent=d.connected?"Worker online; viewer pending":"Worker not configured";
+      notice.textContent="Automatic connection is enabled. The remote Blender worker and authenticated HTTPS viewer still need to be provisioned; this panel will reconnect as soon as they are available.";
+    }
+  }catch{
+    workerState.textContent="WORKER: RECONNECTING";
+    streamState.textContent="STREAM: RETRYING";
+    feedTitle.textContent="Reconnecting to Blender";
+    feedText.textContent="ORNI Studio will retry automatically.";
+  }
+}
+connectBlender();
+setInterval(connectBlender,8000);
 
 const assetGrid=document.getElementById("assetGrid"),assetUpload=document.getElementById("assetUpload"),uploadStatus=document.getElementById("uploadStatus"),creativeState=document.getElementById("creativeState"),designStatus=document.getElementById("designStatus");
 let assets=[],selectedAssets=new Set(),previousImageResponseId=null;
