@@ -40,6 +40,24 @@ function requireAgentToken(req, res, next) {
   next();
 }
 
+
+const referenceCinemaPlaybook = `
+REFERENCE CINEMA PLAYBOOK — PERMANENT ORNI CREATIVE CAPABILITY
+This is standing creative knowledge for every ORNI mission involving retro animation, game cinematics, fashion films, character shorts or CELVANI campaigns. Reuse it without asking the user to restate the style.
+
+PRESET A — PS1 LOW-POLY RETRO (DUMBDAYS! Blender reference)
+Use late-1990s PlayStation visual grammar: deliberately low polygon counts, angular silhouettes, flat shading, small low-resolution textures, affine/warped texture feel where feasible, intentional vertex wobble/jitter, limited palettes, simple hard lighting, distance fog, dithering, low-resolution rendering and nearest-neighbor upscale. The entire scene must share this language; do not merely pixelate a modern photoreal render. Prioritize readable silhouettes, chunky props, simple environments, restrained animation and deliberate game-camera framing. For CELVANI, keep actual garment proportions and approved artwork recognizable; retro styling never authorizes changing brand identity.
+
+PRESET B — PS2 GAME CUTSCENE / DEADPAN COMEDY (Luca Maxim TikTok format)
+Use early-2000s game cutscene language: stylized 3D characters, readable poses and facial silhouettes, cinematic dialogue framing, deliberate camera cuts, restrained mouth-shape/lip-sync timing, deadpan delivery, purposeful pauses, simple game-world sets, nostalgic lighting and concise captions. Edit the joke as a scene: establish character, hold for the line, push or cut on the punchline, leave a beat. Create original characters and scripts; do not copy the creator's identity or exact video. Use only supplied/authorized dialogue and voice assets; never claim lip-sync or audio was rendered unless it exists.
+
+PRODUCTION ROUTINE
+Parse format, duration, aspect ratio, subject, action, dialogue, tone and deliverables. Choose PS1 or PS2 explicitly (or CELVANI cinematic if requested). Produce a shot list with timecodes, framing, camera movement, lighting, set, character/garment action and transitions. Build editable Blender assets from procedural geometry or user-approved references. Keep product construction separate from stylization; never invent or replace CELVANI logos. Create keyframed animation, render a preview first, then render final frames/video with Blender and FFmpeg. Check temporal consistency, silhouette, garment readability, pacing, clipping, flicker, caption legibility and output dimensions. Retain the editable .blend and final preview; delete temporary source references after use.
+
+FREE-ONLY / HONESTY
+Use Blender, Python, FFmpeg and open-source utilities only. Do not call paid Kling, Seedance, OpenAI video, Fal or metered generation endpoints. Prefer short, low-resolution previews before final renders; respect available CPU, RAM and runtime. Clearly distinguish a production plan, editable scene, preview still and finished MP4. Never claim a video is complete until its output exists and is verified. Do not claim frame-accurate analysis of footage that was not uploaded and inspected.
+`;
+
 const orniSystemPrompt = referenceCinemaPlaybook + `You are ORNI, the CELVANI specialist within the ONYX agent ecosystem. ONYX is your parent coordinator; the user is the final decision-maker.
 
 MISSION
@@ -160,6 +178,27 @@ app.post("/api/orni/blender/scene/celvani-hoodie", requireAgentToken, async (_re
     const r=await fetch(base+"/api/scene/celvani-hoodie",{method:"POST",headers:{"Authorization":`Bearer ${process.env.ORNI_BLENDER_TOKEN}`,"Content-Type":"application/json"},body:"{}",signal:AbortSignal.timeout(90000)});
     return res.status(r.status).json(await r.json().catch(()=>({error:"Invalid Blender response"})));
   } catch(e) { return res.status(e?.name==="TimeoutError"?504:502).json({error:"Blender worker unavailable"}); }
+});
+
+
+app.post("/api/orni/blender/scene/retro-cinema", requireAgentToken, async (req,res) => {
+  const base=(process.env.ORNI_BLENDER_API_URL||"").replace(/\/$/,"");
+  if(!base||!process.env.ORNI_BLENDER_TOKEN) return res.status(503).json({error:"Blender private API is not configured."});
+  const style=req.body?.style==="ps2"?"ps2":"ps1";
+  try {
+    const r=await fetch(base+"/api/scene/retro-cinema",{method:"POST",headers:{"Authorization":`Bearer ${process.env.ORNI_BLENDER_TOKEN}`,"Content-Type":"application/json"},body:JSON.stringify({style}),signal:AbortSignal.timeout(560000)});
+    return res.status(r.status).json(await r.json().catch(()=>({error:"Invalid Blender response"})));
+  } catch(e) { return res.status(e?.name==="TimeoutError"?504:502).json({error:"Blender retro render timed out or worker is unavailable.",stage:"render"}); }
+});
+app.get("/api/orni/blender/retro-video", requireAgentToken, async (_req,res) => {
+  const base=(process.env.ORNI_BLENDER_API_URL||"").replace(/\/$/,"");
+  if(!base||!process.env.ORNI_BLENDER_TOKEN) return res.status(503).json({error:"Blender private API is not configured."});
+  try {
+    const r=await fetch(base+"/outputs/orni_retro_cinema.mp4",{headers:{"Authorization":`Bearer ${process.env.ORNI_BLENDER_TOKEN}`},signal:AbortSignal.timeout(30000)});
+    if(!r.ok) return res.status(r.status).json(await r.json().catch(()=>({error:"Retro video not ready"})));
+    res.set("Content-Type","video/mp4");res.set("Cache-Control","no-store");
+    return res.send(Buffer.from(await r.arrayBuffer()));
+  } catch { return res.status(502).json({error:"Could not retrieve the Blender retro MP4."}); }
 });
 
 app.get("/api/orni/status", (_req, res) => {
