@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b0c0e"><title>ONYX — Command Center</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0c0e;--panel:#131518;--line:#272b30;--muted:#9299a2;--text:#f2f3f4;--accent:#d9dce0}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -20%,#252a30 0,transparent 55%),var(--bg);color:var(--text);font:15px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+header{height:72px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,72px)}
+.brand{letter-spacing:.28em;font-size:13px;font-weight:700}.status{color:#b7c8bc;font-size:12px;display:flex;gap:9px;align-items:center}.dot{width:7px;height:7px;border-radius:50%;background:#8cae97;box-shadow:0 0 12px #8cae97}
+main{max-width:1120px;margin:0 auto;padding:54px 24px 80px}.eyebrow{font-size:11px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase}
+h1{font-size:clamp(34px,6vw,58px);font-weight:500;letter-spacing:-.045em;line-height:1.05;margin:12px 0}.sub{color:var(--muted);max-width:610px;margin:0 0 38px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.card{background:linear-gradient(145deg,#171a1e,#101215);border:1px solid var(--line);border-radius:18px;padding:22px}.agent-top{display:flex;justify-content:space-between;align-items:center}.orb{width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#b7bdc4 20%,#555d66 48%,#15181c 72%);box-shadow:inset -8px -8px 16px #050607,0 0 28px #89939c25}.agent-name{font-size:20px;margin:17px 0 2px}.role{color:var(--muted);font-size:13px}.pill{border:1px solid var(--line);border-radius:99px;padding:4px 9px;color:var(--muted);font-size:11px}
+.section{margin-top:34px}.section h2{font-size:18px;font-weight:500;margin:0 0 12px}.mission{padding:22px}.mission p{color:var(--muted);margin:0 0 16px;font-size:13px}textarea{width:100%;min-height:118px;resize:vertical;background:#0d0f11;border:1px solid #30353b;border-radius:12px;padding:14px;color:var(--text);font:inherit;outline:none}textarea:focus{border-color:#858d96}
+button{margin-top:12px;border:0;border-radius:99px;padding:11px 18px;background:#e7e9eb;color:#111317;font-weight:650;cursor:pointer}button:disabled{opacity:.45;cursor:wait}
+.result{display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:16px;white-space:pre-wrap;color:#d4d8dc;font-size:13px;max-height:520px;overflow:auto}.hint{color:var(--muted);font-size:12px;margin-top:12px}
+@media(max-width:650px){main{padding-top:38px}.grid{grid-template-columns:1fr}header{height:62px}}
+</style></head>
+<body>
+<header><div class="brand">ONYX</div><div class="status"><span class="dot"></span><span id="platformStatus">COMMAND CENTER</span></div></header>
+<main>
+<div class="eyebrow">THE HOUSE / COMMAND CENTER</div>
+<h1>Good evening.</h1>
+<p class="sub">One command center. Specialized intelligence. You remain the final authority. ONYX coordinates the work; ORNI focuses on CELVANI.</p>
+<div class="grid">
+<section class="card"><div class="agent-top"><div class="orb"></div><span class="pill">PRIMARY AI</span></div><div class="agent-name">ONYX</div><div class="role">Chief of Staff · Orchestration</div></section>
+<section class="card"><div class="agent-top"><div class="orb" style="filter:contrast(1.25)"></div><span class="pill" id="orniPill">CHECKING</span></div><div class="agent-name">ORNI</div><div class="role">CELVANI · Creative & Product Intelligence</div></section>
+</div>
+<section class="section"><h2>Delegate to ORNI</h2><div class="card mission">
+<p>Send a CELVANI mission for structured analysis. This first integration is analysis-only; it does not claim to research live sources, edit files, or operate Blender.</p>
+<textarea id="mission" maxlength="6000" placeholder="Example: Evaluate the next CELVANI hoodie sample against our fit, fabric, construction, branding, and premium-accessible-luxury standards."></textarea>
+<button id="send">Send mission</button><div class="hint" id="hint">Your request is sent through ONYX's server. Credentials never enter the browser.</div>
+<div class="result" id="result"></div></div></section>
+</main>
+<script>
+const pill=document.getElementById("orniPill"),hint=document.getElementById("hint"),result=document.getElementById("result"),send=document.getElementById("send");
+fetch("/api/agents").then(r=>r.json()).then(data=>{const a=data.agents.find(x=>x.id==="orni");pill.textContent=(a?.status||"unknown").toUpperCase();}).catch(()=>pill.textContent="UNKNOWN");
+send.addEventListener("click",async()=>{const mission=document.getElementById("mission").value.trim();if(!mission){hint.textContent="Enter a mission first.";return;}send.disabled=true;send.textContent="Working…";hint.textContent="ONYX is routing your mission to ORNI.";result.style.display="none";try{const r=await fetch("/api/orni/mission",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mission})});const body=await r.json();result.textContent=JSON.stringify(body,null,2);result.style.display="block";hint.textContent=r.ok?"ORNI returned a mission report. Review its assumptions and recommendation.":"Mission failed. Review the response below."; }catch{hint.textContent="Could not reach the ONYX service. Try again shortly.";}finally{send.disabled=false;send.textContent="Send mission";}});
+</script></body></html>
