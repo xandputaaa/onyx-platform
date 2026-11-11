@@ -34,6 +34,7 @@ app.get("/api/agents", async (_req, res) => {
 
 app.get("/api/orni/blender/status", async (_req, res) => {
   const workerBase = (process.env.ORNI_BLENDER_BASE_URL || "").replace(/\/$/, "");
+  const viewerUrl = process.env.ORNI_BLENDER_VIEW_URL || "";
   if (!workerBase) {
     return res.json({
       connected: false,
@@ -44,9 +45,9 @@ app.get("/api/orni/blender/status", async (_req, res) => {
   try {
     const r = await fetch(`${workerBase}/status`, { signal: AbortSignal.timeout(4000) });
     const body = await r.json().catch(() => ({}));
-    return res.status(r.ok ? 200 : 502).json({ connected: r.ok, state: r.ok ? "connected" : "degraded", worker: body });
+    return res.status(r.ok ? 200 : 502).json({ connected: r.ok, state: r.ok ? "connected" : "degraded", viewerUrl: viewerUrl || null, worker: body });
   } catch {
-    return res.status(502).json({ connected: false, state: "unreachable", message: "The configured Blender worker could not be reached." });
+    return res.status(502).json({ connected: false, state: "unreachable", viewerUrl: viewerUrl || null, message: "The configured Blender worker could not be reached." });
   }
 });
 
