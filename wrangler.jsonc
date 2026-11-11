@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "orni-creative-ai",
+  "main": "apps/orni-ai-worker/src/index.js",
+  "compatibility_date": "2026-11-11",
+  "workers_dev": true,
+  "ai": { "binding": "AI" },
+  "vars": {
+    "ORNI_ALLOWED_ORIGIN": "https://onyx-web-production-1a01fb86.up.railway.app"
+  },
+  "observability": { "enabled": true }
+}
