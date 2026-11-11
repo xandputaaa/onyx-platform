@@ -121,16 +121,16 @@ def create_crash_woods_cinema():
         lamp=cube("Headlamp",(x,-2.88,1.0),(0.34,0.08,0.18),headlight,0.025); car_parts.append(lamp)
     # Dummy is assembled from primitive pieces, with articulated limbs.
     dummy_parts=[]
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1,radius=0.34,location=(0,-7,2.15))
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1,radius=0.34,location=(0,-5.25,2.15))
     dhead=bpy.context.object; dhead.name="Crash dummy | faceted head"; dhead.data.materials.append(metal); dummy_parts.append(dhead)
-    torso=cube("Crash dummy | torso",(0,-7,1.25),(0.72,0.42,0.95),metal,0.05); dummy_parts.append(torso)
-    pelvis=cube("Crash dummy | pelvis",(0,-7,0.78),(0.62,0.40,0.34),joint,0.04); dummy_parts.append(pelvis)
+    torso=cube("Crash dummy | torso",(0,-5.25,1.25),(0.72,0.42,0.95),metal,0.05); dummy_parts.append(torso)
+    pelvis=cube("Crash dummy | pelvis",(0,-5.25,0.78),(0.62,0.40,0.34),joint,0.04); dummy_parts.append(pelvis)
     limbs=[]
     for side in (-1,1):
-        upper=cube("Crash dummy | upper arm",(side*0.52,-7,1.36),(0.22,0.25,0.72),metal,0.04)
-        lower=cube("Crash dummy | forearm",(side*0.52,-7,0.98),(0.19,0.22,0.55),metal,0.035)
-        thigh=cube("Crash dummy | thigh",(side*0.2,-7,0.43),(0.25,0.28,0.65),metal,0.04)
-        shin=cube("Crash dummy | shin",(side*0.2,-7,0.08),(0.22,0.25,0.55),metal,0.035)
+        upper=cube("Crash dummy | upper arm",(side*0.52,-5.25,1.36),(0.22,0.25,0.72),metal,0.04)
+        lower=cube("Crash dummy | forearm",(side*0.52,-5.25,0.98),(0.19,0.22,0.55),metal,0.035)
+        thigh=cube("Crash dummy | thigh",(side*0.2,-5.25,0.43),(0.25,0.28,0.65),metal,0.04)
+        shin=cube("Crash dummy | shin",(side*0.2,-5.25,0.08),(0.22,0.25,0.55),metal,0.035)
         limbs.extend([upper,lower,thigh,shin]); dummy_parts.extend([upper,lower,thigh,shin])
     # Dummy begins inside the car, then is staged beside it and walks into the trees.
     # Animate grouped pieces as a simple articulated game character.
@@ -155,6 +155,12 @@ def create_crash_woods_cinema():
         obj.location=base+Vector((3.0,3.0,0)); obj.keyframe_insert(data_path="location",frame=105)
         obj.location=base+Vector((4.5,8.0,0)); obj.keyframe_insert(data_path="location",frame=142)
         obj.location=base+Vector((5.0,10.0,0)); obj.keyframe_insert(data_path="location",frame=150)
+    # Alternating limb swings sell a simple low-frame-rate PS1 walk cycle.
+    for limb_index, limb in enumerate(limbs):
+        phase=0 if limb_index%2==0 else math.pi
+        for frame in (65,75,85,95,105,115,125,135,145):
+            limb.rotation_euler[0]=0.22*math.sin((frame-65)*0.42+phase)
+            limb.keyframe_insert(data_path="rotation_euler",frame=frame)
     # Forest moon, deliberately faceted like a PS1 skybox prop.
     bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2,radius=2.0,location=(0,18,17))
     moon=bpy.context.object; moon.name="Moon | final reveal"; moon.data.materials.append(moonmat)
