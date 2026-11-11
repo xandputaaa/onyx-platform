@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const allowedTypes = new Set(["image/png", "image/jpeg", "image/webp", "image/avif"]);
@@ -38,7 +38,7 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
     const s3=getStorage(); if(!s3)return res.status(503).json({error:"CELVANI asset storage is not configured."});
     try{
       const listed=await s3.send(new ListObjectsV2Command({Bucket:process.env.ASSETS_S3_BUCKET,Prefix:"celvani/"}));
-      const assets=await Promise.all((listed.Contents||[]).filter(x=>x.Key&&x.Size>0).sort((a,b)=>(b.LastModified?.getTime()||0)-(a.LastModified?.getTime()||0)).slice(0,100).map(async item=>{
+      const assets=await Promise.all((listed.Contents||[]).filter(x=>x.Key&&x.Size>0&&!x.Key.startsWith("celvani/temp/")).sort((a,b)=>(b.LastModified?.getTime()||0)-(a.LastModified?.getTime()||0)).slice(0,100).map(async item=>{
         const key=item.Key; const name=decodeURIComponent(key.split("/").pop().replace(/^\d+-[a-f0-9-]+-/,""));
         const mimeType=key.endsWith(".jpg")||key.endsWith(".jpeg")?"image/jpeg":key.endsWith(".webp")?"image/webp":key.endsWith(".avif")?"image/avif":"image/png";
         return {...await signedAsset(s3,key,name,mimeType),createdAt:item.LastModified?.toISOString()||null};
@@ -52,11 +52,11 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
     if(!allowedTypes.has(mimeType)||typeof data!=="string")return res.status(400).json({error:"Upload a PNG, JPEG, WEBP, or AVIF image."});
     const buffer=Buffer.from(data,"base64");
     if(!buffer.length||buffer.length>maxImageBytes)return res.status(413).json({error:"Images must be smaller than 12 MB."});
-    const filename=safeName(name); const key="celvani/"+Date.now()+"-"+randomUUID()+"-"+filename;
+    const filename=safeName(name); const key="celvani/temp/"+Date.now()+"-"+randomUUID()+"-"+filename;
     try{
       await s3.send(new PutObjectCommand({Bucket:process.env.ASSETS_S3_BUCKET,Key:key,Body:buffer,ContentType:mimeType,Metadata:{originalname:encodeURIComponent(filename)}}));
       const asset=await signedAsset(s3,key,filename,mimeType);
-      return res.status(201).json({asset});
+      return res.status(201).json({asset:{...asset,temporary:true}});
     }catch(error){console.error("ORNI asset upload failed",{name:error?.name});return res.status(502).json({error:"Could not save this image to the CELVANI library."});}
   });
   app.post("/api/orni/designs/generate",requireAgentToken,async(req,res)=>{
@@ -67,7 +67,7 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
     if(provider!=="cloudflare"&&!apiKey)return res.status(503).json({error:provider==="fal"?"Add FAL_KEY to the ORNI API Railway service to enable image generation.":"OpenAI image generation is not configured on ORNI."});
     const s3=getStorage(); if(!s3)return res.status(503).json({error:"CELVANI asset storage is not configured."});
     const prompt=typeof req.body?.prompt==="string"?req.body.prompt.trim():"";
-    const assetKeys=Array.isArray(req.body?.assetKeys)?req.body.assetKeys.filter(x=>typeof x==="string"&&x.startsWith("celvani/")).slice(0,4):[];
+    const assetKeys=Array.isArray(req.body?.assetKeys)?req.body.assetKeys.filter(x=>typeof x==="string"&&x.startsWith("celvani/")&&!x.includes("..")).slice(0,4):[];
     if(!prompt||prompt.length>6000)return res.status(400).json({error:"Write a design brief between 1 and 6000 characters."});
     try{
       const fullPrompt=collectionContext+"\\n\\nUSER DESIGN BRIEF:\\n"+prompt;
@@ -135,6 +135,9 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
       const timedOut=error?.name==="TimeoutError"||error?.name==="AbortError";
       console.error("ORNI creative generation failed",{name:error?.name,timedOut});
       return res.status(timedOut?504:502).json({error:timedOut?"Image generation timed out.":"Could not complete the CELVANI image generation request.",provider});
+    }finally{
+      const temporaryKeys=assetKeys.filter(key=>key.startsWith("celvani/temp/"));
+      if(s3&&temporaryKeys.length)await Promise.allSettled(temporaryKeys.map(Key=>s3.send(new DeleteObjectCommand({Bucket:process.env.ASSETS_S3_BUCKET,Key}))));
     }
   });
 
@@ -169,6 +172,9 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
       const timedOut=error?.name==="TimeoutError"||error?.name==="AbortError";
       console.error("ORNI video generation failed",{name:error?.name,timedOut});
       return res.status(timedOut?504:502).json({error:timedOut?"Video generation timed out.":"Could not complete the CELVANI video generation request.",provider:"cloudflare"});
+    }finally{
+      const temporaryKeys=assetKeys.filter(key=>key.startsWith("celvani/temp/"));
+      if(s3&&temporaryKeys.length)await Promise.allSettled(temporaryKeys.map(Key=>s3.send(new DeleteObjectCommand({Bucket:process.env.ASSETS_S3_BUCKET,Key}))));
     }
   });
 }
