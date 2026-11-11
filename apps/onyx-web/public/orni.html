@@ -100,7 +100,7 @@ textarea{width:100%;min-height:135px;resize:vertical;background:#0c0e10;border:1
       </div>
       <textarea class="creative-prompt" id="videoPrompt" maxlength="26000" placeholder="Example: A cinematic CELVANI campaign film. A model in the oversized black hoodie walks through a stark concrete gallery. Slow tracking camera, precise garment movement, restrained luxury lighting, detailed fabric texture."></textarea>
       <div class="creative-actions"><button id="generateVideo" disabled title="Paid video APIs are disabled">AI video disabled · free mode</button><button id="buildRetroScene" type="button" style="background:#24292e;color:#e7e9eb">Build in Blender</button><button id="sendCinemaMission" type="button" style="background:#24292e;color:#e7e9eb">Send production brief to ORNI</button></div>
-      <div class="creative-status" id="videoStatus">Kling V4 Flash · MiniMax H3 Highspeed</div>
+      <div class="creative-status" id="videoStatus">Free-only · Blender procedural render pipeline</div>
     </div>
     <div class="panel" style="padding:16px">
       <div class="eyebrow">GENERATED MOTION</div>
@@ -192,19 +192,6 @@ document.getElementById("sendCinemaMission").addEventListener("click",()=>{
   document.getElementById("mission").value=brief;document.getElementById("missions").scrollIntoView({behavior:"smooth"});
   document.getElementById("hint").textContent="Production brief prepared with the selected ORNI style preset. Submit it for a structured production plan.";
 });
-document.getElementById("generateVideo").addEventListener("click",async()=>{
-  const prompt=document.getElementById("videoPrompt").value.trim();
-  if(!prompt){videoStatus.textContent="Write a video brief first.";return;}
-  const button=document.getElementById("generateVideo");button.disabled=true;button.textContent="ORNI is rendering…";videoStatus.textContent="Sending the campaign brief to Cloudflare AI. Video generation may take a few minutes.";
-  try{
-    const response=await fetch("/api/orni/videos/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,model:videoModel.value,duration:Number(videoDuration.value),aspect_ratio:document.getElementById("videoRatio").value,assetKeys:[...selectedAssets]})});
-    const body=await response.json();if(!response.ok)throw new Error(body.error||"Video generation failed.");
-    const video=document.getElementById("generatedVideo");video.src=body.asset.url;document.getElementById("generatedVideoWrap").style.display="block";document.getElementById("videoPlaceholder").style.display="none";document.getElementById("generatedVideoMeta").textContent="Created with "+body.model+" · Saved to CELVANI reference library";
-    assets=assets.filter(asset=>!selectedAssets.has(asset.key));selectedAssets.clear();renderAssets();uploadStatus.textContent="Temporary references cleared after generation.";videoStatus.textContent="Video generated. Temporary source images were deleted after use.";
-  }catch(error){assets=assets.filter(asset=>!selectedAssets.has(asset.key));selectedAssets.clear();renderAssets();uploadStatus.textContent="Temporary references cleared after the request.";videoStatus.textContent=error.message;}
-  finally{button.disabled=false;button.textContent="Generate video";}
-});
-
-const send=document.getElementById("send"),hint=document.getElementById("hint"),result=document.getElementById("result");
+// Paid video-provider handler intentionally removed in free-only mode.\nconst send=document.getElementById("send"),hint=document.getElementById("hint"),result=document.getElementById("result");
 send.addEventListener("click",async()=>{const mission=document.getElementById("mission").value.trim();if(!mission){hint.textContent="Enter a mission first.";return;}send.disabled=true;send.textContent="ORNI is working…";hint.textContent="Routing through ONYX.";result.style.display="none";try{const r=await fetch("/api/orni/mission",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mission})});const body=await r.json();result.textContent=JSON.stringify(body,null,2);result.style.display="block";hint.textContent=r.ok?"Mission report received. Review recommendations and assumptions.":(r.status===429||body.category==="provider_rate_limited"?"Groq rate or quota limit. Check Groq Console billing, usage and rate limits for the API key configured on ORNI.":"Mission failed. Review the diagnostic response.");}catch{hint.textContent="Could not reach ONYX. Try again shortly.";}finally{send.disabled=false;send.textContent="Send mission to ORNI";}});
 </script></body></html>
