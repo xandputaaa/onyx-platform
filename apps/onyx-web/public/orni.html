@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b0c0e"><title>ORNI — CELVANI Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0c0e;--panel:#14171a;--line:#292e34;--muted:#969da6;--text:#f1f3f4}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 70% -20%,#272d33 0,transparent 55%),var(--bg);color:var(--text);font:14px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{height:68px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 clamp(18px,5vw,64px)}a{color:inherit;text-decoration:none}.brand{letter-spacing:.25em;font-size:12px;font-weight:700}.crumb{color:var(--muted);font-size:12px}
+main{max-width:1200px;margin:auto;padding:42px 22px 80px}.eyebrow{font-size:10px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase}h1{font-weight:500;font-size:clamp(34px,5vw,54px);letter-spacing:-.045em;margin:8px 0}.sub{color:var(--muted);margin:0 0 28px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.state{border:1px solid var(--line);border-radius:99px;padding:7px 11px;color:#b7c5bb;font-size:11px}
+.tabs{display:flex;gap:8px;margin:24px 0 16px;flex-wrap:wrap}.tab{padding:9px 14px;border:1px solid var(--line);border-radius:99px;color:var(--muted);font-size:12px}.tab.active{background:#e7e9eb;color:#111;border-color:#e7e9eb}
+.grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.8fr);gap:14px}.panel{background:linear-gradient(145deg,#171a1e,#111417);border:1px solid var(--line);border-radius:17px;padding:20px}.panel h2{font-weight:500;font-size:17px;margin:0 0 5px}.muted{color:var(--muted)}.small{font-size:12px}
+.viewport{margin-top:15px;aspect-ratio:16/9;min-height:240px;background:radial-gradient(ellipse at center,#1b2025,#080a0c 72%);border:1px solid #30363d;border-radius:12px;display:flex;align-items:center;justify-content:center;text-align:center;padding:22px;position:relative;overflow:hidden}
+.viewport:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 49.8%,#ffffff08 50%,transparent 50.2%),linear-gradient(transparent 49.8%,#ffffff08 50%,transparent 50.2%);background-size:48px 48px;opacity:.35}
+.feed{position:relative;max-width:360px}.feed .orb{width:42px;height:42px;margin:0 auto 14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#adb4bc 22%,#59616a 50%,#111 74%);box-shadow:0 0 32px #aeb7c322}.feed strong{display:block;font-weight:500;font-size:14px}.feed p{color:var(--muted);font-size:12px;margin:6px 0 0}
+.meta{display:flex;justify-content:space-between;gap:10px;margin-top:12px;color:var(--muted);font-size:11px}.metric{padding:13px 0;border-bottom:1px solid var(--line)}.metric:last-child{border:0}.metric strong{display:block;font-weight:500;margin-bottom:3px}
+textarea{width:100%;min-height:135px;resize:vertical;background:#0c0e10;border:1px solid #343a41;border-radius:11px;padding:13px;color:var(--text);font:inherit;margin-top:13px}button{border:0;border-radius:99px;padding:11px 16px;background:#e7e9eb;color:#111;font-weight:650;margin-top:11px;cursor:pointer}button:disabled{opacity:.5}.result{display:none;white-space:pre-wrap;max-height:380px;overflow:auto;border-top:1px solid var(--line);padding-top:14px;margin-top:14px;font-size:12px;color:#d5d9dd}
+.notice{border:1px solid #49402e;background:#1a1711;color:#d8c9a8;padding:12px;border-radius:10px;font-size:12px;margin-top:14px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}main{padding-top:30px}.viewport{min-height:200px}}
+</style></head>
+<body>
+<header><a class="brand" href="/">ONYX</a><div class="crumb">THE HOUSE / <span style="color:#f1f3f4">ORNI STUDIO</span></div></header>
+<main>
+<div class="top"><div><div class="eyebrow">CELVANI · SPECIALIST INTELLIGENCE</div><h1>ORNI Studio</h1><p class="sub">Creative direction, product intelligence and the CELVANI production workspace.</p></div><div class="state" id="agentState">CONNECTING TO ORNI</div></div>
+<nav class="tabs"><a class="tab" href="/">Command Center</a><a class="tab active" href="/orni">ORNI Studio</a><a class="tab" href="#blender">Blender Workstream</a></nav>
+<div class="grid">
+<section class="panel" id="blender">
+<h2>Blender · Live workspace</h2><div class="muted small">A visual window into ORNI's 3D production session</div>
+<div class="viewport" id="viewport"><div class="feed"><div class="orb"></div><strong id="feedTitle">Blender worker not connected</strong><p id="feedText">This panel is waiting for a real Blender worker and screen-stream connection. No simulated footage is being shown.</p></div></div>
+<div class="meta"><span id="workerState">WORKER: NOT CONFIGURED</span><span id="streamState">STREAM: OFFLINE</span></div>
+<div class="notice" id="workerNotice">The live stream requires a dedicated worker with Blender installed, a render or desktop capture process, and a secure stream transport. This workspace is ready to display that feed once the worker is provisioned.</div>
+</section>
+<aside class="panel">
+<h2>ORNI system</h2><div class="muted small">Specialist status and connected capabilities</div>
+<div class="metric"><strong>Parent coordinator</strong><span class="muted small">ONYX · Chief of Staff</span></div>
+<div class="metric"><strong>Primary domain</strong><span class="muted small">CELVANI · Fashion house</span></div>
+<div class="metric"><strong>Mission engine</strong><span class="muted small" id="missionState">Checking provider</span></div>
+<div class="metric"><strong>Blender automation</strong><span class="muted small" id="blenderCapability">Not connected</span></div>
+<div class="metric"><strong>Execution policy</strong><span class="muted small">Analysis only until tools are connected and verified</span></div>
+</aside>
+</div>
+<section class="panel" style="margin-top:14px">
+<h2>Delegate a CELVANI mission</h2><p class="muted small">ORNI returns structured analysis through ONYX. It does not browse live sources, change project files or operate Blender through this form.</p>
+<textarea id="mission" maxlength="6000" placeholder="Describe the CELVANI decision, product, campaign, supplier, or creative direction you want ORNI to analyze."></textarea>
+<button id="send">Send mission to ORNI</button><div class="muted small" id="hint" style="margin-top:10px">Your mission is routed securely through ONYX.</div><pre class="result" id="result"></pre>
+</section>
+</main>
+<script>
+const state=document.getElementById("agentState"),workerState=document.getElementById("workerState"),streamState=document.getElementById("streamState"),feedTitle=document.getElementById("feedTitle"),feedText=document.getElementById("feedText"),notice=document.getElementById("workerNotice");
+fetch("/api/agents").then(r=>r.json()).then(d=>{const a=d.agents.find(x=>x.id==="orni");state.textContent="ORNI · "+(a?.status||"UNKNOWN").toUpperCase();document.getElementById("missionState").textContent=(a?.status||"unknown").toUpperCase();}).catch(()=>state.textContent="ORNI · UNREACHABLE");
+fetch("/api/orni/blender/status").then(r=>r.json()).then(d=>{workerState.textContent="WORKER: "+String(d.state||"unknown").replaceAll("_"," ").toUpperCase();if(d.connected){feedTitle.textContent="Blender worker connected";feedText.textContent="Worker status is available. A stream transport still needs to be attached before live frames can appear.";document.getElementById("blenderCapability").textContent="Worker reachable; stream pending";notice.textContent="The worker is reachable. The live visual transport is not yet configured."; }else{feedTitle.textContent="Blender worker not connected";feedText.textContent=d.message||"Waiting for the Blender worker.";}}).catch(()=>{workerState.textContent="WORKER: UNREACHABLE";});
+const send=document.getElementById("send"),hint=document.getElementById("hint"),result=document.getElementById("result");
+send.addEventListener("click",async()=>{const mission=document.getElementById("mission").value.trim();if(!mission){hint.textContent="Enter a mission first.";return;}send.disabled=true;send.textContent="ORNI is working…";hint.textContent="Routing through ONYX.";result.style.display="none";try{const r=await fetch("/api/orni/mission",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mission})});const body=await r.json();result.textContent=JSON.stringify(body,null,2);result.style.display="block";hint.textContent=r.ok?"Mission report received. Review recommendations and assumptions.":(r.status===429||body.category==="provider_rate_limited"?"Provider rate or quota limit. Check OpenAI billing, usage and rate limits for the API key configured on ORNI.":"Mission failed. Review the diagnostic response.");}catch{hint.textContent="Could not reach ONYX. Try again shortly.";}finally{send.disabled=false;send.textContent="Send mission to ORNI";}});
+</script></body></html>
