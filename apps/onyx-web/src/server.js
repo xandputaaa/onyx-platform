@@ -43,6 +43,15 @@ app.get("/api/orni/ready", async (_req, res) => {
   }
 });
 
+app.get("/api/orni/blender/preview", async (_req,res) => {
+  if (!process.env.ORNI_ACCESS_TOKEN) return res.status(503).json({error:"ONYX-to-ORNI authentication is not configured."});
+  try {
+    const r=await fetch(orniBase+"/api/orni/blender/preview",{headers:{"Authorization":"Bearer "+process.env.ORNI_ACCESS_TOKEN},signal:AbortSignal.timeout(15000)});
+    const type=r.headers.get("content-type")||"application/json"; res.status(r.status).set("Content-Type",type);
+    if(type.startsWith("image/")) return res.send(Buffer.from(await r.arrayBuffer()));
+    return res.send(await r.text());
+  } catch { return res.status(502).json({error:"Could not reach ORNI preview service."}); }
+});
 app.get("/api/orni/blender/status", async (_req,res) => {
   if (!process.env.ORNI_ACCESS_TOKEN) return res.status(503).json({connected:false,state:"not_configured",message:"ONYX-to-ORNI authentication is not configured."});
   try {
