@@ -587,11 +587,9 @@ class Handler(BaseHTTPRequestHandler):
         set_job_status(status="queued",stage="Waiting for Blender render slot",progress=0,frame=0,frames=0,error=None)
         job={"action":action,"style":body.get("style","ps1") if isinstance(body,dict) else "ps1","duration":body.get("duration",5) if isinstance(body,dict) else 5,"aspect_ratio":body.get("aspectRatio","16:9") if isinstance(body,dict) else "16:9","caption":str(body.get("caption",""))[:120] if isinstance(body,dict) else "","done":threading.Event(),"result":None}
         JOBS.put(job)
-        if not job["done"].wait(540):
-            set_job_status(status="failed",stage="Render timed out",error="Blender operation timed out",progress=0)
-            return self.reply(504,{"error":"Blender operation timed out"})
-        result=job["result"] or {"error":"empty_result"}
-        return self.reply(200 if result.get("ok") else 500,result)
+        # Accept immediately. Blender renders in its timer-driven queue while
+        # the threaded HTTP server remains free for progress and health requests.
+        return self.reply(202,{"ok":True,"accepted":True,"status":"queued","message":"Blender job accepted; poll /job-status for progress."})
     def log_message(self,*args): pass
 
 def serve():
