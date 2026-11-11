@@ -12,7 +12,7 @@ function getStorage() {
   return new S3Client({
     region: process.env.ASSETS_S3_REGION,
     endpoint: process.env.ASSETS_S3_ENDPOINT,
-    forcePathStyle: true,
+    forcePathStyle: false,
     credentials: { accessKeyId: process.env.ASSETS_S3_ACCESS_KEY_ID, secretAccessKey: process.env.ASSETS_S3_SECRET_ACCESS_KEY }
   });
 }
@@ -66,7 +66,7 @@ export function registerCreativeRoutes(app,{requireAgentToken}) {
     if(!prompt||prompt.length>6000)return res.status(400).json({error:"Write a design brief between 1 and 6000 characters."});
     try{
       const content=[{type:"input_text",text:collectionContext+"\n\nUSER DESIGN BRIEF:\n"+prompt}];
-      if(!previousResponseId){
+      {
         for(const key of assetKeys){
           const obj=await s3.send(new GetObjectCommand({Bucket:process.env.ASSETS_S3_BUCKET,Key:key}));
           const bytes=await bodyToBuffer(obj.Body);
