@@ -67,9 +67,11 @@ def create_hoodie():
     return {"ok":True,"scene":"CELVANI oversized hoodie blockout","blend":"/outputs/celvani_hoodie_blockout.blend","render":"/outputs/celvani_hoodie_blockout.png","note":"Concept blockout only; not a manufacturing-accurate garment or approved logo."}
 
 
-def create_retro_cinema(style="ps1"):
+def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9"):
     clear_scene()
     ps1 = style == "ps1"
+    duration = max(3,min(15,int(duration or 5)))
+    aspect_ratio = aspect_ratio if aspect_ratio in ("9:16","16:9","1:1") else "16:9"
     palette = {
         "ink": (0.025,0.035,0.065), "blue": (0.08,0.20,0.55),
         "red": (0.72,0.12,0.16), "cream": (0.78,0.72,0.58),
@@ -109,11 +111,15 @@ def create_retro_cinema(style="ps1"):
         light.rotation_euler=(Vector((0,0.8,1.8))-light.location).to_track_quat("-Z","Y").to_euler()
     scene=bpy.context.scene
     scene.render.engine="BLENDER_EEVEE_NEXT"
-    scene.render.resolution_x=320 if ps1 else 480
-    scene.render.resolution_y=180 if ps1 else 270
+    base_width=320 if ps1 else 480
+    base_height=180 if ps1 else 270
+    if aspect_ratio=="9:16": base_width,base_height=base_height,base_width
+    elif aspect_ratio=="1:1": base_width=base_height=min(base_width,base_height)
+    scene.render.resolution_x=base_width
+    scene.render.resolution_y=base_height
     scene.render.resolution_percentage=100
     scene.render.fps=12
-    scene.frame_start=1; scene.frame_end=48
+    scene.frame_start=1; scene.frame_end=scene.render.fps*duration
     scene.world.color=(0.025,0.025,0.035)
     scene.view_settings.view_transform="Standard"
     scene.view_settings.look="Medium High Contrast"
@@ -122,7 +128,7 @@ def create_retro_cinema(style="ps1"):
     scene.render.filepath=str(OUT/"orni_retro_preview.png")
     # Slow camera push and subtle protagonist turn create a real, editable animation timeline.
     cam.location=(4.2,-7.8,3.35); cam.keyframe_insert(data_path="location",frame=1)
-    cam.location=(3.35,-6.6,3.0); cam.keyframe_insert(data_path="location",frame=48)
+    cam.location=(3.35,-6.6,3.0); cam.keyframe_insert(data_path="location",frame=scene.frame_end)
     head.rotation_euler[2]=0.0; head.keyframe_insert(data_path="rotation_euler",frame=1)
     head.rotation_euler[2]=0.16; head.keyframe_insert(data_path="rotation_euler",frame=48)
     for obj in scene.objects:
@@ -138,7 +144,7 @@ def create_retro_cinema(style="ps1"):
     scene.render.ffmpeg.constant_rate_factor="HIGH"; scene.render.ffmpeg.ffmpeg_preset="REALTIME"
     scene.render.filepath=str(OUT/"orni_retro_cinema.mp4")
     bpy.ops.render.render(animation=True)
-    return {"ok":True,"scene":"ORNI "+("PS1 low-poly" if ps1 else "PS2 cutscene")+" retro cinema","style":style,"blend":"/outputs/orni_retro_cinema.blend","preview":"/outputs/orni_retro_preview.png","video":"/outputs/orni_retro_cinema.mp4","frames":48,"fps":12,"note":"Procedural proof-of-pipeline scene. Replace the placeholder character and set with approved CELVANI assets for production campaigns."}
+    return {"ok":True,"scene":"ORNI "+("PS1 low-poly" if ps1 else "PS2 cutscene")+" retro cinema","style":style,"blend":"/outputs/orni_retro_cinema.blend","preview":"/outputs/orni_retro_preview.png","video":"/outputs/orni_retro_cinema.mp4","frames":scene.frame_end,"fps":12,"durationSeconds":duration,"aspectRatio":aspect_ratio,"note":"Procedural proof-of-pipeline scene. Replace the placeholder character and set with approved CELVANI assets for production campaigns."}
 
 
 JOBS=queue.Queue()
@@ -152,7 +158,7 @@ def process_jobs():
         if job["action"]=="hoodie":
             job["result"]=create_hoodie()
         elif job["action"]=="retro":
-            job["result"]=create_retro_cinema(job.get("style","ps1"))
+            job["result"]=create_retro_cinema(job.get("style","ps1"),job.get("duration",5),job.get("aspect_ratio","16:9"))
         elif job["action"]=="render":
             scene=bpy.context.scene
             scene.render.filepath=str(OUT/"celvani_render.png")
@@ -190,7 +196,7 @@ class Handler(BaseHTTPRequestHandler):
         body=json.loads(self.rfile.read(n) or b"{}")
         action={"/api/scene/celvani-hoodie":"hoodie","/api/scene/retro-cinema":"retro","/api/render":"render"}.get(self.path)
         if not action: return self.reply(404,{"error":"unknown_action"})
-        job={"action":action,"style":body.get("style","ps1") if isinstance(body,dict) else "ps1","done":threading.Event(),"result":None}
+        job={"action":action,"style":body.get("style","ps1") if isinstance(body,dict) else "ps1","duration":body.get("duration",5) if isinstance(body,dict) else 5,"aspect_ratio":body.get("aspectRatio","16:9") if isinstance(body,dict) else "16:9","done":threading.Event(),"result":None}
         JOBS.put(job)
         if not job["done"].wait(900): return self.reply(504,{"error":"Blender operation timed out"})
         result=job["result"] or {"error":"empty_result"}
