@@ -141,6 +141,16 @@ app.get("/api/orni/blender/status", requireAgentToken, async (_req,res) => {
     return res.status(r.ok?200:502).json({connected:r.ok,state:r.ok?"connected":"degraded",worker:body});
   } catch { return res.status(502).json({connected:false,state:"unreachable"}); }
 });
+app.get("/api/orni/blender/preview", requireAgentToken, async (_req,res) => {
+  const base=(process.env.ORNI_BLENDER_API_URL||"").replace(/\/$/,"");
+  if(!base||!process.env.ORNI_BLENDER_TOKEN) return res.status(503).json({error:"Blender private API is not configured."});
+  try {
+    const r=await fetch(base+"/outputs/celvani_hoodie_blockout.png",{headers:{"Authorization":"Bearer "+process.env.ORNI_BLENDER_TOKEN},signal:AbortSignal.timeout(12000)});
+    if(!r.ok) return res.status(r.status).json(await r.json().catch(()=>({error:"Preview not ready"})));
+    res.set("Content-Type",r.headers.get("content-type")||"image/png"); res.set("Cache-Control","no-store");
+    return res.send(Buffer.from(await r.arrayBuffer()));
+  } catch { return res.status(502).json({error:"Could not retrieve the Blender preview."}); }
+});
 app.post("/api/orni/blender/scene/celvani-hoodie", requireAgentToken, async (_req,res) => {
   const base=(process.env.ORNI_BLENDER_API_URL||"").replace(/\/$/,"");
   if(!base||!process.env.ORNI_BLENDER_TOKEN) return res.status(503).json({error:"Blender private API is not configured."});
