@@ -205,26 +205,32 @@ document.getElementById("buildRetroScene").addEventListener("click",async()=>{
   const progressWrap=document.getElementById("renderProgressWrap"),progressFill=document.getElementById("renderProgressFill"),progressMeta=document.getElementById("renderProgressMeta");
   progressWrap.hidden=false;progressFill.style.width="0%";progressMeta.textContent="Queued for Blender";
   document.getElementById("renderSavePanel").hidden=true;
-  const progressTimer=setInterval(async()=>{
-    try{
+  const pollRenderUntilDone=async()=>{
+    const started=Date.now();
+    while(Date.now()-started<600000){
       const response=await fetch("/api/orni/blender/job-status",{cache:"no-store"});
+      if(!response.ok)throw new Error("Could not read Blender render progress (HTTP "+response.status+").");
       const state=await response.json();
-      if(!response.ok)return;
       const percent=Math.max(0,Math.min(100,Number(state.progress)||0));
       progressFill.style.width=percent+"%";
       const frame=state.frames?(" · frame "+state.frame+"/"+state.frames):"";
       progressMeta.textContent=(state.stage||"Working")+" · "+percent+"%"+frame;
-      if(state.error)progressMeta.textContent+=" · "+state.error;
-    }catch{}
-  },1000);
+      if(state.status==="complete")return state;
+      if(state.status==="failed")throw new Error(state.error||"Blender production failed.");
+      await new Promise(resolve=>setTimeout(resolve,1000));
+    }
+    throw new Error("Render is still running, but Studio stopped waiting after 10 minutes. Reopen Studio to check the job status.");
+  };
   try{
     const r=await fetch("/api/orni/blender/scene/retro-cinema",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({style,duration:crash?15:Number(videoDuration.value),aspectRatio:crash?"16:9":document.getElementById("videoRatio").value,caption:document.getElementById("videoDialogue").value.trim()})});
-    const d=await r.json();if(!r.ok)throw new Error(d.error||"Blender render failed");
+    const accepted=await r.json();if(!r.ok)throw new Error(accepted.error||"Blender render could not be queued.");
+    videoStatus.textContent="Blender accepted the job. Rendering continues in the background…";
+    await pollRenderUntilDone();
     const videoUrl=videoPath+"?ts="+Date.now(),stillUrl=stillPath+"?ts="+Date.now();
     const video=document.getElementById("generatedVideo"),still=document.getElementById("retroStill");
     document.getElementById("generatedVideoWrap").style.display="block";
     document.getElementById("videoPlaceholder").style.display="none";
-    document.getElementById("generatedVideoMeta").textContent="Blender · "+d.style+" · "+(d.durationSeconds||"")+" sec · "+(d.frames||"")+" frames";
+    document.getElementById("generatedVideoMeta").textContent="Blender · "+style+" · "+(crash?15:Number(videoDuration.value))+" sec";
     const savePanel=document.getElementById("renderSavePanel");
     document.getElementById("saveVideo").href=videoPath;
     document.getElementById("saveVideo").download=crash?"ORNI-crash-woods-15s.mp4":"ORNI-retro-cinema.mp4";
@@ -232,20 +238,20 @@ document.getElementById("buildRetroScene").addEventListener("click",async()=>{
     document.getElementById("saveStill").download=crash?"ORNI-crash-woods-preview.png":"ORNI-retro-preview.png";
     document.getElementById("saveBlend").href=blendPath;
     document.getElementById("saveBlend").download=crash?"ORNI-crash-woods.blend":"ORNI-retro-cinema.blend";
-    const width=d.resolutionX|| (crash?320:style==="ps2"?480:320);
-    const height=d.resolutionY|| (crash?180:style==="ps2"?270:180);
-    document.getElementById("renderDimensions").textContent="ORIGINAL OUTPUT · "+width+" × "+height+" px · "+(d.fps||12)+" FPS · "+(d.durationSeconds||"")+" sec · "+(d.aspectRatio||"16:9");
+    const width=crash?960:style==="ps2"?1440:960;
+    const height=crash?540:style==="ps2"?810:540;
+    document.getElementById("renderDimensions").textContent="UPSCALED OUTPUT · "+width+" × "+height+" px · 12 FPS · "+(crash?15:Number(videoDuration.value))+" sec · 16:9";
     savePanel.hidden=false;
     await new Promise((resolve,reject)=>{
       let pending=2,failed=false;
       const done=()=>{if(--pending===0)resolve();};
-      video.onloadedmetadata=done;video.onerror=()=>{if(!failed){failed=true;reject(new Error("The render completed, but the MP4 could not be loaded for preview."));}};
-      still.onload=done;still.onerror=()=>{if(!failed){failed=true;reject(new Error("The render completed, but the PNG preview could not be loaded."));}};
+      video.onloadedmetadata=done;video.onerror=()=>{if(!failed){failed=true;reject(new Error("The MP4 was created, but its preview could not be loaded. Use Save MP4 to download it."));}};
+      still.onload=done;still.onerror=()=>{if(!failed){failed=true;reject(new Error("The PNG was created, but its preview could not be loaded. Use Save PNG to download it."));}};
       video.src=videoUrl;still.src=stillUrl;still.hidden=false;video.load();
     });
     videoStatus.textContent="Render complete. Preview is ready; save the original MP4, PNG still, or editable .blend below.";
-  }catch(e){videoStatus.textContent=e.message;progressMeta.textContent="Production did not complete: "+e.message;}
-  finally{clearInterval(progressTimer);button.disabled=false;}
+  }catch(e){videoStatus.textContent=e.message;progressMeta.textContent="Production status: "+e.message;}
+  finally{button.disabled=false;}
 });
 document.getElementById("sendCinemaMission").addEventListener("click",()=>{
   const style=videoStyle.value;
