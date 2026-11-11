@@ -53,3 +53,16 @@ test("mission endpoint rejects requests without the ONYX bearer token", async ()
   });
   assert.equal(response.status, 401);
 });
+
+test("mission endpoint validates ONYX correlation IDs after authentication", async () => {
+  process.env.ORNI_ACCESS_TOKEN = "test-only-token";
+  try {
+    const response = await fetch(baseUrl + "/api/orni/mission", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer test-only-token" },
+      body: JSON.stringify({ mission: "Review CELVANI sample.", requestId: 42 })
+    });
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).error, /requestId/);
+  } finally { delete process.env.ORNI_ACCESS_TOKEN; }
+});
