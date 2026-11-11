@@ -245,6 +245,28 @@ app.get("/api/orni/blender/crash-woods-video", requireAgentToken, async (_req,re
   } catch { return res.status(502).json({error:"Could not retrieve the crash-woods MP4."}); }
 });
 
+
+app.get("/api/orni/blender/crash-woods-blend", requireAgentToken, async (_req,res) => {
+  const base=(process.env.ORNI_BLENDER_API_URL||"").replace(/\/$/,"");
+  if(!base||!process.env.ORNI_BLENDER_TOKEN) return res.status(503).json({error:"Blender private API is not configured."});
+  try {
+    const r=await fetch(base+"/outputs/orni_crash_woods.blend",{headers:{"Authorization":`Bearer ${process.env.ORNI_BLENDER_TOKEN}`},signal:AbortSignal.timeout(30000)});
+    if(!r.ok) return res.status(r.status).json(await r.json().catch(()=>({error:"Crash-woods Blender file not ready"})));
+    res.set("Content-Type","application/octet-stream");res.set("Content-Disposition",'attachment; filename="ORNI-crash-woods.blend"');res.set("Cache-Control","no-store");
+    return res.send(Buffer.from(await r.arrayBuffer()));
+  } catch { return res.status(502).json({error:"Could not retrieve the editable crash-woods scene."}); }
+});
+app.get("/api/orni/blender/retro-blend", requireAgentToken, async (_req,res) => {
+  const base=(process.env.ORNI_BLENDER_API_URL||"").replace(/\/$/,"");
+  if(!base||!process.env.ORNI_BLENDER_TOKEN) return res.status(503).json({error:"Blender private API is not configured."});
+  try {
+    const r=await fetch(base+"/outputs/orni_retro_cinema.blend",{headers:{"Authorization":`Bearer ${process.env.ORNI_BLENDER_TOKEN}`},signal:AbortSignal.timeout(30000)});
+    if(!r.ok) return res.status(r.status).json(await r.json().catch(()=>({error:"Retro Blender file not ready"})));
+    res.set("Content-Type","application/octet-stream");res.set("Content-Disposition",'attachment; filename="ORNI-retro-cinema.blend"');res.set("Cache-Control","no-store");
+    return res.send(Buffer.from(await r.arrayBuffer()));
+  } catch { return res.status(502).json({error:"Could not retrieve the editable retro scene."}); }
+});
+
 app.get("/api/orni/status", (_req, res) => {
   res.status(200).json({
     agent: "ORNI",
