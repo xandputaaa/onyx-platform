@@ -334,20 +334,16 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
     const requestBody = {
       model,
       messages: [
-        { role: "system", content: orniSystemPrompt + "\\nReturn one concise JSON object matching the ORNI mission report schema. Keep each array to at most 3 concise items and avoid repeating information." },
+        { role: "system", content: orniSystemPrompt + "\\nReturn ONLY one valid JSON object with exactly these keys: mission (string), findings (string array), intelligence (string array), opportunities (string array), risks (string array), recommendation (string), approvalRequired (boolean), assumptions (string array), nextActions (string array). No markdown, no code fences, no extra keys. Keep each array to at most 3 concise items and avoid repeating information." },
         { role: "user", content: mission }
       ],
       // Keep the requested completion small enough for Groq's free OTPM allowance.
       max_completion_tokens: 512,
       temperature: 0.3,
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "orni_mission_report",
-          strict: true,
-          schema: missionReportSchema
-        }
-      }
+      // Groq's Qwen endpoint may reject strict json_schema with
+      // json_validate_failed. JSON-object mode is broadly supported; validate
+      // the exact ORNI contract locally before returning a report.
+      response_format: { type: "json_object" }
     };
     let response;
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -419,8 +415,22 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
     try {
       report = JSON.parse(output);
     } catch {
-      return res.status(502).json({ error: "ORNI returned a report that could not be parsed" });
+      return res.status(502).json({ error: "ORNI returned a report that could not be parsed", model });
     }
+    const stringFields = ["mission", "recommendation"];
+    const arrayFields = ["findings", "intelligence", "opportunities", "risks", "assumptions", "nextActions"];
+    const validObject = report && typeof report === "object" && !Array.isArray(report);
+    const validStrings = validObject && stringFields.every(key => typeof report[key] === "string");
+    const validArrays = validObject && arrayFields.every(key => Array.isArray(report[key]) && report[key].every(item => typeof item === "string"));
+    if (!validObject || !validStrings || !validArrays || typeof report.approvalRequired !== "boolean") {
+      return res.status(502).json({
+        error: "ORNI model response did not match the required report structure",
+        model,
+        validation: { validObject, validStrings, validArrays, approvalRequired: typeof report?.approvalRequired === "boolean" }
+      });
+    }
+    // Ignore any unexpected provider keys so the public contract stays stable.
+    report = Object.fromEntries([...stringFields, ...arrayFields, "approvalRequired"].map(key => [key, report[key]]));
 
     return res.status(200).json({
       agent: "ORNI",
