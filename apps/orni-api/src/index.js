@@ -101,6 +101,16 @@ A. DUMBDAYS! — "how to make ps1 / low poly / retro animations in blender (ULTI
 B. NoPoly — "How to make PSX/PS1 Graphics For Game Development In Blender" (2025-07-19; https://www.youtube.com/watch?v=nDaon0o_qoM). The published description establishes a Blender + Photoshop workflow for creating PSX graphics. Do not attribute unverified chapter-level details to this specific video. As additional PSX craft requirements in ORNI's own playbook, cover texture preparation, modeling, vertex painting, controlled vertex wobble and post-processing where suitable. Use Blender-native tools and free alternatives such as GIMP/Krita; no paid add-ons.
 C. Luca Maxim TikTok — "you met me at a very Chinese time in my life". This is a separate early-2000s PS2 cutscene / character-comedy reference family: stylized game character in a deliberately low-detail world, dialogue framing, deadpan delivery, deliberate holds, simple cuts and a final line/punchline. Do not label this PS1. Use original characters and scripts; do not impersonate the creator or copy protected assets.
 
+LIVE WEB RESEARCH — FREE, KEYLESS, SOURCE-AWARE
+- ORNI has a public-web research route at POST /api/orni/research. The ONYX Studio exposes this route through its authenticated proxy. Mission requests involving Blender, PS1/PS2/PSX, low-poly, tutorials, references, assets, current tools, competitors or suppliers automatically trigger a live search before model analysis.
+- Search the exact technique plus alternate terms and the relevant Blender version. Prefer primary sources in this order: Blender Manual/API and release notes; the tutorial creator's original video/page; Blender Artists and Blender Stack Exchange for practical troubleshooting; Poly Haven/OpenGameArt/ambientCG original asset and license pages; reputable creator breakdowns. Use Reddit/community posts as experience reports, not definitive technical authority.
+- Read the original source page where supported, not only the search snippet. Keep source title, URL, date/version and what was actually verified. Clearly label search-snippet-only results, opinions, assumptions and conflicting guidance. Never invent tutorial chapters, node settings, asset contents, compatibility or test results.
+- Pinterest is visual moodboard discovery only. Never treat a Pinterest image or pin as an asset source, permission or license. Trace any referenced asset back to its original creator and license.
+- For free-only production, verify CC0/public-domain or compatible permissive terms on the original source page before download. CC-BY requires attribution; unclear, ripped, reuploaded or restricted game assets are rejected. Do not call paid APIs, paid add-ons or paid asset libraries.
+- Translate research into an actionable Blender recipe: version-aware steps, object/material/node settings, UV and texture workflow, camera/lighting choices, render settings, likely failure modes and validation checks. Separate style interpretation from documented facts.
+- Before claiming an asset or workflow works, download/import it in the actual worker and verify mesh data, UV layers, materials, texture links, dimensions, render visibility and license provenance. Search results alone do not prove import success.
+- If public search is unavailable, say so and continue only from the embedded playbook; do not pretend the web was checked. Research does not grant permission to publish, buy, message, or make irreversible changes.
+
 PRESET 1 — PS1 / PSX LOW-POLY ANIMATION
 Never take a modern photoreal render and merely shrink or pixelate it. It must look intentionally authored for early 3D game constraints.
 1. PROJECT DESIGN: define concept, duration, aspect ratio, frame rate, palette, polygon/detail budget, camera language and output resolution before modeling. Build a style frame.
@@ -217,7 +227,7 @@ Do not imply that a recommendation is an executed action. Return only data match
 
 registerCreativeRoutes(app, { requireAgentToken, systemPrompt: orniSystemPrompt });
 
-app.get("/api/orni/reference-cinema", requireAgentToken, (_req,res) => res.json({ok:true,engine:"Blender + Python + FFmpeg",freeOnly:true,presets:[{id:"ps1",name:"PS1 Low-Poly Retro",references:[{creator:"DUMBDAYS!",title:"How to make PS1 / low-poly / retro animations in Blender",role:"animation and retro scene workflow",url:"https://youtu.be/MxTz8vNY7XE"},{creator:"NoPoly",title:"How to make PSX/PS1 Graphics For Game Development In Blender",role:"PSX graphics workflow using Blender and Photoshop",url:"https://www.youtube.com/watch?v=nDaon0o_qoM"}],summary:"DUMBDAYS! reference: project setup through modeling, character texturing/rigging, environment, animation, cameras, pixel render, export and finishing. NoPoly confirms a Blender + Photoshop PSX graphics workflow. ORNI adds free-tool UV, photographic atlas, 5-bit quantization, Bayer dithering, nearest-neighbour, fixed-camera composition and evidence-based QA standards. CC0 vehicle and tree assets plus CC0 photo maps are documented in the playbook."},{id:"ps2-cutscene",name:"PS2 Cutscene Comedy",reference:"Luca Maxim TikTok format",summary:"Stylized game character, deadpan dialogue framing, cinematic cuts, pauses, captions and nostalgic early-2000s game look."}],playbookVersion:"3.1",referenceCount:6,knowledgeSource:"permanent embedded ORNI production standard"}));
+app.get("/api/orni/reference-cinema", requireAgentToken, (_req,res) => res.json({ok:true,engine:"Blender + Python + FFmpeg",freeOnly:true,presets:[{id:"ps1",name:"PS1 Low-Poly Retro",references:[{creator:"DUMBDAYS!",title:"How to make PS1 / low-poly / retro animations in Blender",role:"animation and retro scene workflow",url:"https://youtu.be/MxTz8vNY7XE"},{creator:"NoPoly",title:"How to make PSX/PS1 Graphics For Game Development In Blender",role:"PSX graphics workflow using Blender and Photoshop",url:"https://www.youtube.com/watch?v=nDaon0o_qoM"}],summary:"DUMBDAYS! reference: project setup through modeling, character texturing/rigging, environment, animation, cameras, pixel render, export and finishing. NoPoly confirms a Blender + Photoshop PSX graphics workflow. ORNI adds free-tool UV, photographic atlas, 5-bit quantization, Bayer dithering, nearest-neighbour, fixed-camera composition and evidence-based QA standards. CC0 vehicle and tree assets plus CC0 photo maps are documented in the playbook."},{id:"ps2-cutscene",name:"PS2 Cutscene Comedy",reference:"Luca Maxim TikTok format",summary:"Stylized game character, deadpan dialogue framing, cinematic cuts, pauses, captions and nostalgic early-2000s game look."}],playbookVersion:"3.2",referenceCount:8,knowledgeSource:"permanent embedded ORNI production standard"}));
 
 app.post("/api/orni/research", requireAgentToken, async (req,res) => {
   const query=typeof req.body?.query==="string"?req.body.query.trim():"";
@@ -416,8 +426,8 @@ app.get("/api/orni/status", (_req, res) => {
     status: "creative-pipeline",
     capabilities: {
       authenticatedMissionEndpoint: Boolean(process.env.ORNI_ACCESS_TOKEN && process.env.GROQ_API_KEY),
-      celvaniIntelligence: "Groq model-assisted analysis; live research integration not connected",
-      creativeStudio: "Reference Cinema playbook and procedural retro scene builder enabled",
+      celvaniIntelligence: "Groq model-assisted analysis with free live public-web research",
+      creativeStudio: "Reference Cinema playbook v3.2, live web research and procedural retro scene builder enabled",
       blenderAutomation: Boolean(process.env.ORNI_BLENDER_API_URL && process.env.ORNI_BLENDER_TOKEN) ? "connected" : "not_configured",
       visualWorkspaceStreaming: "noVNC viewer configured; live session depends on Blender worker availability",
       shopifyIntegration: "planned",
@@ -430,7 +440,7 @@ app.get("/api/orni/status", (_req, res) => {
       model: process.env.ORNI_MODEL || "qwen/qwen3.8-27b",
       onyxOriginConfigured: Boolean(allowedOrigin)
     },
-    note: "A configured provider enables model-assisted analysis only; external integrations remain separate."
+    note: "Groq handles model reasoning; public web research uses a free no-key search route. Blender and other integrations are separately health-checked."
   });
 });
 
