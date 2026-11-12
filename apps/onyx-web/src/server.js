@@ -85,6 +85,25 @@ app.get("/api/orni/reference-cinema", (req, res) => orniForward(req, res, "/api/
 app.post("/api/orni/blender/scene/retro-cinema", (req,res) => orniForward(req,res,"/api/orni/blender/scene/retro-cinema","POST"));
 
 let crashWoodsTriggerUsed=false;
+app.post("/api/orni/internal/poll-crash-woods", async (req,res) => {
+  const supplied=String(req.query?.key||"");
+  const expected=process.env.ORNI_BUILD_TRIGGER_TOKEN||"";
+  if(!expected||supplied.length!==expected.length||supplied!==expected) return res.status(404).json({error:"Not found"});
+  if(!process.env.ORNI_ACCESS_TOKEN) return res.status(503).json({error:"ORNI authentication is not configured."});
+  try{
+    const upstream=await fetch(`${orniBase}/api/orni/blender/job-status`,{
+      headers:{"Authorization":"Bearer "+process.env.ORNI_ACCESS_TOKEN},
+      signal:AbortSignal.timeout(8000)
+    });
+    const state=await upstream.json().catch(()=>({error:"ORNI returned an unreadable job status."}));
+    console.log("[ORNI_CRASH_WOODS_STATUS] "+JSON.stringify(state));
+    return res.status(upstream.status).json(state);
+  }catch(error){
+    console.log("[ORNI_CRASH_WOODS_STATUS_ERROR] "+String(error?.message||error));
+    return res.status(502).json({error:"Could not poll ORNI Blender job status."});
+  }
+});
+
 app.post("/api/orni/internal/trigger-crash-woods", async (req,res) => {
   const supplied=String(req.query?.key||"");
   const expected=process.env.ORNI_BUILD_TRIGGER_TOKEN||"";
