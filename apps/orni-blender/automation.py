@@ -201,6 +201,23 @@ def import_oga_psx_vehicle(car_root):
     bpy.ops.object.join()
     vehicle=bpy.context.object
     vehicle.name="Imported CC0 PSX vehicle | GGBotNet"
+    # Preserve original imported textures; add a photo-derived enamel atlas only where the model has none.
+    for material in list(vehicle.data.materials):
+        if material and material.use_nodes:
+            has_image=any(node.type=="TEX_IMAGE" and node.image for node in material.node_tree.nodes)
+            shader=material.node_tree.nodes.get("Principled BSDF")
+            if not has_image and shader:
+                tex=material.node_tree.nodes.new("ShaderNodeTexImage")
+                tex.name="CC0 photographic PSX enamel | nearest"
+                tex.image=photo_maps["Weathered car paint"]; tex.interpolation="Closest"
+                material.node_tree.links.new(tex.outputs["Color"],shader.inputs["Base Color"])
+    if not vehicle.data.materials:
+        fallback=mat("Imported vehicle | photo-derived enamel",(0.22,0.025,0.035),0.1,0.62)
+        tex=fallback.node_tree.nodes.new("ShaderNodeTexImage")
+        tex.name="CC0 photographic PSX enamel | nearest"
+        tex.image=photo_maps["Weathered car paint"]; tex.interpolation="Closest"
+        fallback.node_tree.links.new(tex.outputs["Color"],fallback.node_tree.nodes.get("Principled BSDF").inputs["Base Color"])
+        vehicle.data.materials.append(fallback)
     bpy.ops.object.transform_apply(location=True,rotation=True,scale=True)
     dims=vehicle.dimensions
     if dims.x>dims.y:
@@ -303,7 +320,7 @@ def create_crash_woods_cinema():
     glass=mat("Glass | smoked blue reflections",(0.025,0.09,0.13),0.45,0.16)
     tire=textured_mat("Tire rubber | photographed worn rubber",(0.018,0.022,0.027),0.92,24,photo="Tire rubber")
     dummy_mat=textured_mat("Crash dummy | scratched polystyrene composite",(0.62,0.58,0.48),0.72,29,photo="Crash dummy composite")
-    joint_mat=mat("Crash dummy | graphite joints",(0.035,0.045,0.055),0.32,0.42)
+    joint_mat=textured_mat("Crash dummy | photographed graphite joint material",(0.035,0.045,0.055),0.76,32,0.1,photo="Road hardware")
     metal=textured_mat("Road hardware | photographed worn metal",(0.12,0.14,0.16),0.72,35,0.45,photo="Road hardware")
     warm=mat("Headlamp | amber glass",(0.9,0.42,0.12),0.15,0.22)
     moon_mat=mat("Moon | bone-white",(0.78,0.79,0.72),0.0,0.82)
