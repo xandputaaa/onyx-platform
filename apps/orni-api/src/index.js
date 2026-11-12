@@ -469,7 +469,7 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
   }
 
   let liveResearch=null;
-  const wantsResearch=req.body?.liveResearch===true||typeof req.body?.researchQuery==="string"||/\\b(research|reference|references|tutorial|blender|ps1|ps2|psx|low[\\s-]?poly|asset|textures?|workflow|accurate|current|latest|trend|competitor|supplier)\\b/i.test(mission);
+  const wantsResearch=req.body?.liveResearch===true||typeof req.body?.researchQuery==="string"||/\b(research|reference|references|tutorial|blender|ps1|ps2|psx|low[\s-]?poly|asset|textures?|workflow|accurate|current|latest|trend|competitor|supplier)\b/i.test(mission);
   if(wantsResearch){
     try{liveResearch=await runOrniWebResearch(req.body?.researchQuery||mission);}
     catch(error){liveResearch={query:req.body?.researchQuery||mission,results:[],error:String(error?.message||error)};}
