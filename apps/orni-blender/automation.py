@@ -330,6 +330,11 @@ def create_crash_woods_cinema():
     scene.render.resolution_percentage=100; scene.render.fps=12
     scene.frame_start=1; scene.frame_end=180
     scene.world.color=(0.004,0.008,0.018)
+    scene.world.use_nodes=True
+    world_bg=scene.world.node_tree.nodes.get("Background")
+    if world_bg:
+        world_bg.inputs["Color"].default_value=(0.001,0.002,0.008,1)
+        world_bg.inputs["Strength"].default_value=0.08
     scene.view_settings.view_transform="Standard"
     scene.view_settings.look="Medium High Contrast"
     if hasattr(scene.view_settings,"dither_intensity"): scene.view_settings.dither_intensity=0.35
@@ -489,7 +494,8 @@ me,verts,faces,material,bevel)
 
     # Articulated crash dummy with tapered limbs, real pivots and a grouped root.
     dummy_root=bpy.data.objects.new("Crash dummy rig | pelvis root",None); scene.collection.objects.link(dummy_root)
-    dummy_root.location=(0,-18.25,0)
+    dummy_root.parent=car_root; dummy_root.matrix_parent_inverse=Matrix.Identity(4)
+    dummy_root.location=(0,0,0)
     def dummy_piece(obj):
         obj.parent=dummy_root; obj.matrix_parent_inverse=Matrix.Identity(4); return obj
     # Local character origin at ground level; cabin is centered around z=1.2.
@@ -527,18 +533,19 @@ me,verts,faces,material,bevel)
     door_hinge.rotation_euler[2]=0; door_hinge.keyframe_insert(data_path="rotation_euler",frame=34)
     door_hinge.rotation_euler[2]=math.radians(-68); door_hinge.keyframe_insert(data_path="rotation_euler",frame=43)
     door_hinge.rotation_euler[2]=math.radians(-68); door_hinge.keyframe_insert(data_path="rotation_euler",frame=68)
-    door.hide_render=True
-    door_hinge.hide_render=True
+    door.hide_render=False
+    door_hinge.hide_render=False
 
     # Dummy remains in the moving cabin through impact, then exits and walks away.
-    dummy_root.location=(0,-18.25,0); dummy_root.keyframe_insert(data_path="location",frame=1)
-    dummy_root.location=(0,-5.25,0); dummy_root.keyframe_insert(data_path="location",frame=27)
-    dummy_root.location=(0,-4.60,0); dummy_root.keyframe_insert(data_path="location",frame=38)
-    dummy_root.location=(1.85,-4.15,0); dummy_root.keyframe_insert(data_path="location",frame=55)
-    dummy_root.location=(2.4,-2.7,0); dummy_root.keyframe_insert(data_path="location",frame=70)
-    dummy_root.location=(3.2,0.2,0); dummy_root.keyframe_insert(data_path="location",frame=105)
-    dummy_root.location=(4.2,4.2,0); dummy_root.keyframe_insert(data_path="location",frame=145)
-    dummy_root.location=(4.4,4.8,0); dummy_root.keyframe_insert(data_path="location",frame=180)
+    dummy_root.location=(0,0,0); dummy_root.keyframe_insert(data_path="location",frame=1)
+    dummy_root.location=(0,0,0); dummy_root.keyframe_insert(data_path="location",frame=27)
+    dummy_root.location=(0,0,0); dummy_root.keyframe_insert(data_path="location",frame=34)
+    dummy_root.location=(0.85,0.05,0); dummy_root.keyframe_insert(data_path="location",frame=38)
+    dummy_root.location=(1.85,0.45,0); dummy_root.keyframe_insert(data_path="location",frame=55)
+    dummy_root.location=(2.4,1.6,0); dummy_root.keyframe_insert(data_path="location",frame=70)
+    dummy_root.location=(3.2,4.8,0); dummy_root.keyframe_insert(data_path="location",frame=105)
+    dummy_root.location=(4.2,8.2,0); dummy_root.keyframe_insert(data_path="location",frame=145)
+    dummy_root.location=(4.4,8.8,0); dummy_root.keyframe_insert(data_path="location",frame=180)
     # Alternating arm and leg rotations around authored limb origins, with clear foot contact beats.
     for side,upper,lower,thigh,shin,foot in limb_rigs:
         phase=0 if side<0 else math.pi
@@ -585,6 +592,11 @@ me,verts,faces,material,bevel)
     bpy.ops.object.light_add(type="AREA",location=(0,-3,3.0))
     key=bpy.context.object; key.name="Amber headlamp bounce"; key.data.energy=120; key.data.shape="DISK"; key.data.size=4
     key.data.color=(1.0,0.54,0.28); key.rotation_euler=(math.radians(24),0,0)
+    bpy.ops.object.light_add(type="AREA",location=(4.8,1.5,3.8))
+    rim=bpy.context.object; rim.name="Blue moon rim | character separation"; rim.data.energy=180; rim.data.shape="DISK"; rim.data.size=3
+    rim.data.color=(0.28,0.42,1.0); rim.rotation_euler=(math.radians(32),0,math.radians(155))
+    bpy.ops.object.light_add(type="POINT",location=(0,-2.1,1.15))
+    lamp=bpy.context.object; lamp.name="Car headlamp practical"; lamp.data.energy=42; lamp.data.shadow_soft_size=0.8; lamp.data.color=(1.0,0.48,0.2)
     bpy.ops.object.camera_add(location=(0,-25,6))
     cam=bpy.context.object; cam.name="ORNI locked 9:16 PS2 cutscene camera"; scene.camera=cam; cam.data.lens=52; cam.data.clip_start=0.1; cam.data.clip_end=250
     cam.data.dof.use_dof=False; cam.data.dof.aperture_fstop=5.6
@@ -595,20 +607,20 @@ me,verts,faces,material,bevel)
         cam.keyframe_insert(data_path="rotation_euler",frame=frame)
     # Four composed vertical shots: tracking approach, impact/exit, over-shoulder walk, moon reveal.
     camera_shot(1,(0,-25,6),(0,-13,1.25))
-    camera_shot(27,(0,-12,5.4),(0,-1.2,1.25))
-    camera_shot(33,(0,-12,5.4),(0,-1.2,1.25))
-    camera_shot(34,(0,-9.0,5.1),(0,-0.3,1.2))
-    camera_shot(68,(0,-7.5,4.8),(1.1,-2.2,1.2))
-    camera_shot(69,(0,-3.5,5.2),(2.4,-2.7,1.2))
-    camera_shot(145,(0,2.5,5.6),(4.2,4.2,1.3))
+    camera_shot(27,(0,-12,5.4),(0,0,1.25))
+    camera_shot(33,(0,-12,5.4),(0,0,1.25))
+    camera_shot(34,(0,-9.0,5.1),(1.0,0.0,1.2))
+    camera_shot(68,(0,-7.5,4.8),(2.4,1.2,1.2))
+    camera_shot(69,(0,-3.5,5.2),(2.8,1.8,1.2))
+    camera_shot(145,(0,2.5,5.6),(4.2,8.2,1.3))
     camera_shot(146,(0,10,8),(-1,16,17))
     camera_shot(180,(0,10,8),(-1,16,17))
     # Camera gate: sample every authored cut/track key and reject out-of-frame targets.
     from bpy_extras.object_utils import world_to_camera_view
     framing_targets=[
-        (1,(0,-13,1.25)),(27,(0,-1.2,1.25)),(33,(0,0,1.25)),
-        (34,(0,-0.3,1.2)),(68,(1.1,-2.2,1.2)),(69,(2.4,-2.7,1.2)),
-        (145,(4.2,4.2,1.3)),(146,(-1,16,17)),(180,(-1,16,17))
+        (1,(0,-13,1.25)),(27,(0,0,1.25)),(33,(0,0,1.25)),
+        (34,(1.0,0.0,1.2)),(68,(2.4,1.2,1.2)),(69,(2.8,1.8,1.2)),
+        (145,(4.2,8.2,1.3)),(146,(-1,16,17)),(180,(-1,16,17))
     ]
     camera_report=[]
     for sample_frame,target in framing_targets:
@@ -619,6 +631,22 @@ me,verts,faces,material,bevel)
         camera_report.append({"frame":sample_frame,"x":round(projected.x,3),"y":round(projected.y,3),"depth":round(projected.z,3),"inside":inside})
         if not inside:
             raise RuntimeError("Camera framing validation failed at frame "+str(sample_frame)+": "+str(camera_report[-1]))
+    # Sample every authored shot segment, not just its endpoints, and check camera near-plane clearance.
+    target_keys=[(1,(0,-13,1.25)),(27,(0,0,1.25)),(33,(0,0,1.25)),(34,(1.0,0.0,1.2)),(68,(2.4,1.2,1.2)),(69,(2.8,1.8,1.2)),(145,(4.2,8.2,1.3)),(146,(-1,16,17)),(180,(-1,16,17))]
+    depsgraph=bpy.context.evaluated_depsgraph_get()
+    for (fa,ta),(fb,tb) in zip(target_keys,target_keys[1:]):
+        for sample_frame in range(fa,fb+1,3):
+            scene.frame_set(sample_frame); bpy.context.view_layer.update()
+            t=(sample_frame-fa)/max(1,fb-fa)
+            target=Vector(ta).lerp(Vector(tb),t)
+            projected=world_to_camera_view(scene,cam,target)
+            if not (0.025<=projected.x<=0.975 and 0.025<=projected.y<=0.975 and projected.z>0):
+                raise RuntimeError("Intermediate camera framing failed at frame "+str(sample_frame)+": "+str((round(projected.x,3),round(projected.y,3),round(projected.z,3))))
+            camera_origin=cam.matrix_world.translation
+            forward=cam.matrix_world.to_quaternion() @ Vector((0,0,-1))
+            hit,hit_location,_,_,hit_obj,_=scene.ray_cast(depsgraph,camera_origin,forward,distance=0.16)
+            if hit and hit_obj and "fog" not in hit_obj.name.lower():
+                raise RuntimeError("Camera near-plane obstruction at frame "+str(sample_frame)+" by "+hit_obj.name)
     scene["ORNI_Camera_Frames_Validated"]=True
     scene["ORNI_Camera_Validation_Report"]=json.dumps(camera_report)
     scene["ORNI_Texture_Provenance"]="Poly Haven CC0 photographic diffuse maps; 64px; 5-bit/channel Bayer dither; nearest-neighbour"
