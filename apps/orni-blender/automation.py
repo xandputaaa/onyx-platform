@@ -219,6 +219,10 @@ def import_oga_psx_vehicle(car_root):
     vehicle.location.z=-min_z
     vehicle.parent=car_root
     vehicle.matrix_parent_inverse=Matrix.Identity(4)
+    # Source archives are temporary; imported mesh and packed materials remain in the scene.
+    shutil.rmtree(extract,ignore_errors=True)
+    try: cache.unlink()
+    except OSError: pass
     return vehicle
 
 def create_crash_woods_cinema():
