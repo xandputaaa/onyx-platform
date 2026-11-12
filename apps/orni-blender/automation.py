@@ -725,9 +725,8 @@ def create_crash_woods_cinema():
                         str(sample_frame)+"; last obstruction: "+obstacle_name
                     )
             if repairs:
-                scene.setdefault("ORNI_Camera_Foliage_Repairs",json.dumps([]))
                 try:
-                    repair_log=json.loads(scene["ORNI_Camera_Foliage_Repairs"])
+                    repair_log=json.loads(scene.get("ORNI_Camera_Foliage_Repairs","[]"))
                 except Exception:
                     repair_log=[]
                 repair_log.append({"frame":sample_frame,"moves":repairs})
