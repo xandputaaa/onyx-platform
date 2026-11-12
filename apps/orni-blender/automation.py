@@ -261,11 +261,15 @@ def import_cc0_forest_pack(scene, photo_maps):
     for blend_path in blend_files[:8]:
         with bpy.data.libraries.load(str(blend_path),link=False) as (source,target):
             target.objects=list(source.objects)
-        imported=[obj for obj in target.objects if obj]
-        for obj in imported:
-            if obj.name not in scene.objects:
+        imported=[]
+        for obj in target.objects:
+            if not obj: continue
+            if obj.type=="MESH":
                 scene.collection.objects.link(obj)
-        meshes=[obj for obj in imported if obj.type=="MESH"]
+                imported.append(obj)
+            else:
+                bpy.data.objects.remove(obj,do_unlink=True)
+        meshes=imported
         if not meshes: continue
         bpy.ops.object.select_all(action="DESELECT")
         for obj in meshes: obj.select_set(True)
