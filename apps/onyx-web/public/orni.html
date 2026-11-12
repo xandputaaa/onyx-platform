@@ -133,9 +133,12 @@ textarea{width:100%;min-height:135px;resize:vertical;background:#0c0e10;border:1
 </section>
 
 <section class="panel" id="missions" style="margin-top:14px">
-<h2>Delegate a CELVANI mission</h2><p class="muted small">ORNI returns structured analysis through ONYX. Live research, file editing and Blender control are enabled only when their integrations are connected.</p>
+<h2>Delegate a CELVANI mission</h2><p class="muted small">ORNI can now research public web references before answering. PS1/PS2, Blender, low-poly, tutorials, asset, competitor and supplier missions automatically trigger live research when relevant.</p>
 <textarea id="mission" maxlength="6000" placeholder="Describe the CELVANI decision, product, campaign, supplier, or creative direction you want ORNI to analyze."></textarea>
-<button id="send">Send mission to ORNI</button><div class="muted small" id="hint" style="margin-top:10px">Your mission is routed securely through ONYX.</div><pre class="result" id="result"></pre>
+<label style="display:flex;align-items:center;gap:9px;margin-top:12px;font-size:12px;color:#c9cdd1"><input id="liveResearch" type="checkbox" checked style="accent-color:#d7d9dc"> Research public web sources before analysis</label>
+<button id="send">Send mission to ORNI</button>
+<div style="border-top:1px solid var(--line);margin-top:18px;padding-top:14px"><strong style="font-size:13px">Research references directly</strong><p class="muted small">Search Blender documentation, Blender community resources, PSX/PS2 tutorials, Pinterest moodboards and verified free-asset sources.</p><input id="researchQuery" maxlength="300" placeholder="e.g. Blender PS2 low-poly forest fog fixed camera techniques" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#111;color:#eee"><button id="researchBtn" type="button">Research the web</button><pre class="result" id="researchResult"></pre></div>
+<div class="muted small" id="hint" style="margin-top:10px">Your mission is routed securely through ONYX.</div><pre class="result" id="result"></pre>
 </section>
 </main>
 <script>
@@ -294,5 +297,18 @@ const quality=style==="crash-woods"?"\\nQUALITY GATE — Render one still for ea
 });
 // Paid video-provider handler intentionally removed in free-only mode.
 const send=document.getElementById("send"),hint=document.getElementById("hint"),result=document.getElementById("result");
-send.addEventListener("click",async()=>{const mission=document.getElementById("mission").value.trim();if(!mission){hint.textContent="Enter a mission first.";return;}send.disabled=true;send.textContent="ORNI is working…";hint.textContent="Routing through ONYX.";result.style.display="none";try{const r=await fetch("/api/orni/mission",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mission})});const body=await r.json();result.textContent=JSON.stringify(body,null,2);result.style.display="block";hint.textContent=r.ok?"Mission report received. Review recommendations and assumptions.":(r.status===429||body.category==="provider_rate_limited"?"Groq rate or quota limit. Check Groq Console billing, usage and rate limits for the API key configured on ORNI.":"Mission failed. Review the diagnostic response.");}catch{hint.textContent="Could not reach ONYX. Try again shortly.";}finally{send.disabled=false;send.textContent="Send mission to ORNI";}});
+document.getElementById("researchBtn").addEventListener("click",async()=>{
+  const query=document.getElementById("researchQuery").value.trim(),button=document.getElementById("researchBtn"),out=document.getElementById("researchResult");
+  if(!query){out.textContent="Enter a topic to research.";out.style.display="block";return;}
+  button.disabled=true;button.textContent="Searching public sources…";out.style.display="none";
+  try{
+    const r=await fetch("/api/orni/research",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query})});
+    const body=await r.json();if(!r.ok)throw new Error(body.detail||body.error||"Research failed.");
+    const sources=body.research?.results||[];
+    out.textContent=sources.length?sources.map((item,i)=>(i+1)+". "+item.title+"\\n"+item.url+"\\n"+(item.snippet||"No search snippet.")+(item.sourceText?"\\nSource extract: "+item.sourceText:"")).join("\\n\\n"):"No readable results returned. Try a more specific query.";
+    out.style.display="block";
+  }catch(error){out.textContent=error.message;out.style.display="block";}
+  finally{button.disabled=false;button.textContent="Research the web";}
+});
+send.addEventListener("click",async()=>{const mission=document.getElementById("mission").value.trim();if(!mission){hint.textContent="Enter a mission first.";return;}send.disabled=true;send.textContent="ORNI is working…";hint.textContent="Routing through ONYX.";result.style.display="none";try{const r=await fetch("/api/orni/mission",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mission,liveResearch:document.getElementById("liveResearch").checked})});const body=await r.json();result.textContent=JSON.stringify(body,null,2);result.style.display="block";hint.textContent=r.ok?"Mission report received. Review recommendations and assumptions.":(r.status===429||body.category==="provider_rate_limited"?"Groq rate or quota limit. Check Groq Console billing, usage and rate limits for the API key configured on ORNI.":"Mission failed. Review the diagnostic response.");}catch{hint.textContent="Could not reach ONYX. Try again shortly.";}finally{send.disabled=false;send.textContent="Send mission to ORNI";}});
 </script></body></html>
