@@ -50,10 +50,10 @@ async function runOrniWebResearch(rawQuery) {
   });
   if(!response.ok) throw new Error("Public search returned HTTP "+response.status);
   const html=await response.text();
-  const decode=(value)=>String(value||"").replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&#(\\d+);/g,(_,n)=>String.fromCharCode(Number(n))).replace(/&#x([0-9a-f]+);/gi,(_,n)=>String.fromCharCode(parseInt(n,16)));
-  const clean=(value)=>decode(String(value||"").replace(/<script[\\s\\S]*?<\\/script>/gi," ").replace(/<style[\\s\\S]*?<\\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/\\s+/g," ").trim());
-  const anchors=[...html.matchAll(/<a\\b(?=[^>]*class=["'][^"']*result__a)([^>]*)>([\\s\\S]*?)<\\/a>/gi)];
-  const snippets=[...html.matchAll(/<(?:a|div|td)[^>]*class=["'][^"']*result__snippet[^"']*["'][^>]*>([\\s\\S]*?)<\\/(?:a|div|td)>/gi)].map(m=>clean(m[1]));
+  const decode=(value)=>String(value||"").replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(Number(n))).replace(/&#x([0-9a-f]+);/gi,(_,n)=>String.fromCharCode(parseInt(n,16)));
+  const clean=(value)=>decode(String(value||"").replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim());
+  const anchors=[...html.matchAll(/<a\b(?=[^>]*class=["'][^"']*result__a)([^>]*)>([\s\S]*?)<\/a>/gi)];
+  const snippets=[...html.matchAll(/<(?:a|div|td)[^>]*class=["'][^"']*result__snippet[^"']*["'][^>]*>([\s\S]*?)<\/(?:a|div|td)>/gi)].map(m=>clean(m[1]));
   const allowedHosts=["blender.org","blenderartists.org","blender.stackexchange.com","youtube.com","youtu.be","pinterest.com","opengameart.org","polyhaven.com","ambientcg.com","itch.io","github.com","reddit.com","cgcookie.com","devtalk.blender.org"];
   const allowed=(host)=>allowedHosts.some(domain=>host===domain||host.endsWith("."+domain));
   const results=[];
@@ -82,7 +82,7 @@ async function runOrniWebResearch(rawQuery) {
           }
           break;
         }
-        if(pageResponse?.ok&&/text\\/html/i.test(pageResponse.headers.get("content-type")||"")){
+        if(pageResponse?.ok&&/text\/html/i.test(pageResponse.headers.get("content-type")||"")){
           item.sourceText=clean(await pageResponse.text()).slice(0,3600);
         }
       }catch{/* Keep search snippet when a source blocks page retrieval. */}
