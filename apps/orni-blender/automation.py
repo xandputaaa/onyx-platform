@@ -200,9 +200,9 @@ def import_oga_psx_vehicle(car_root, photo_maps):
         with urllib.request.urlopen(req,timeout=60) as response: data=response.read()
         cache.write_bytes(data)
     extract=Path("/tmp/orni_psx_style_cars")
-    if not extract.exists():
-        extract.mkdir(parents=True,exist_ok=True)
-        with zipfile.ZipFile(cache) as archive: archive.extractall(extract)
+    if extract.exists(): shutil.rmtree(extract,ignore_errors=True)
+    extract.mkdir(parents=True,exist_ok=True)
+    with zipfile.ZipFile(cache) as archive: archive.extractall(extract)
     blend_files=sorted(extract.rglob("*.blend"))
     if not blend_files:
         raise RuntimeError("The CC0 GGBotNet vehicle archive contained no Blender model files.")
