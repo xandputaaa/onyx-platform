@@ -48,6 +48,26 @@ def unwrap_scene_meshes():
     bpy.ops.mesh.select_all(action="SELECT")
     bpy.ops.uv.smart_project(island_margin=0.025)
     bpy.ops.object.mode_set(mode="OBJECT")
+    for obj in meshes:
+        if not obj.data.polygons:
+            raise RuntimeError("UV validation failed: mesh has no polygon data: "+obj.name)
+        if not obj.data.uv_layers or not obj.data.uv_layers.active:
+            raise RuntimeError("UV validation failed: missing UV map on "+obj.name)
+        uv_data=obj.data.uv_layers.active.data
+        if len(uv_data)!=len(obj.data.loops):
+            raise RuntimeError("UV validation failed: incomplete UV coordinates on "+obj.name)
+        for item in uv_data:
+            if not (math.isfinite(item.uv.x) and math.isfinite(item.uv.y)):
+                raise RuntimeError("UV validation failed: non-finite UV coordinate on "+obj.name)
+        for material in obj.data.materials:
+            if not material or not material.use_nodes: continue
+            for node in material.node_tree.nodes:
+                if node.type=="TEX_IMAGE":
+                    if not node.image or not node.image.has_data:
+                        raise RuntimeError("Texture validation failed: missing image data in "+material.name+" on "+obj.name)
+                    node.interpolation="Closest"
+                    try: node.image.pack()
+                    except Exception: pass
     return len(meshes)
 
 
@@ -185,14 +205,14 @@ def import_oga_psx_vehicle(car_root, photo_maps):
         with zipfile.ZipFile(cache) as archive: archive.extractall(extract)
     blend_files=sorted(extract.rglob("*.blend"))
     if not blend_files:
-        return None
+        raise RuntimeError("The CC0 GGBotNet vehicle archive contained no Blender model files.")
     chosen=next((p for p in blend_files if any(k in p.stem.lower() for k in ("car1","car_1","car-1","vehicle1","vehicle_1"))),blend_files[0])
     with bpy.data.libraries.load(str(chosen),link=False) as (source,target):
         names=list(source.objects)
         target.objects=names
     imported=[obj for obj in target.objects if obj and obj.type=="MESH"]
     if not imported:
-        return None
+        raise RuntimeError("The selected CC0 GGBotNet vehicle project contained no usable mesh objects.")
     for obj in imported:
         bpy.context.scene.collection.objects.link(obj)
     bpy.ops.object.select_all(action="DESELECT")
@@ -204,7 +224,13 @@ def import_oga_psx_vehicle(car_root, photo_maps):
     # Preserve original imported textures; add a photo-derived enamel atlas only where the model has none.
     for material in list(vehicle.data.materials):
         if material and material.use_nodes:
-            has_image=any(node.type=="TEX_IMAGE" and node.image for node in material.node_tree.nodes)
+            image_nodes=[node for node in material.node_tree.nodes if node.type=="TEX_IMAGE"]
+            has_image=any(node.image and node.image.has_data for node in image_nodes)
+            for node in image_nodes:
+                if node.image and node.image.has_data:
+                    node.interpolation="Closest"
+                    try: node.image.pack()
+                    except Exception: pass
             shader=material.node_tree.nodes.get("Principled BSDF")
             if not has_image and shader:
                 tex=material.node_tree.nodes.new("ShaderNodeTexImage")
@@ -281,10 +307,14 @@ def import_cc0_forest_pack(scene, photo_maps):
         for slot in tree.data.materials:
             if not slot: continue
             nodes=slot.node_tree.nodes if slot.use_nodes else None
-            has_image=bool(nodes and any(n.type=="TEX_IMAGE" and n.image for n in nodes))
+            image_nodes=[n for n in nodes or [] if n.type=="TEX_IMAGE"]
+            has_image=any(n.image and n.image.has_data for n in image_nodes)
             if has_image:
-                for n in nodes:
-                    if n.type=="TEX_IMAGE" and n.image: n.interpolation="Closest"
+                for n in image_nodes:
+                    if n.image and n.image.has_data:
+                        n.interpolation="Closest"
+                        try: n.image.pack()
+                        except Exception: pass
                 continue
             if not slot.use_nodes: slot.use_nodes=True
             shader=slot.node_tree.nodes.get("Principled BSDF")
@@ -484,9 +514,10 @@ def create_crash_woods_cinema():
         external_vehicle=import_oga_psx_vehicle(car_root,photo_maps)
     except Exception as exc:
         raise RuntimeError("CC0 PSX vehicle asset import failed: "+str(exc))
-    if external_vehicle:
-        for part in car_parts: part.hide_render=True; part.hide_viewport=True
-        external_vehicle.name="GGBotNet CC0 PSX car | main hero vehicle"
+    if not external_vehicle:
+        raise RuntimeError("Required CC0 GGBotNet PSX vehicle was not imported; refusing to render a procedural substitute.")
+    for part in car_parts: part.hide_render=True; part.hide_viewport=True
+    external_vehicle.name="GGBotNet CC0 PSX car | main hero vehicle"
     car_root.location=(0,-13,0); car_root.keyframe_insert(data_path="location",frame=1)
     car_root.location=(0,0,0); car_root.keyframe_insert(data_path="location",frame=27)
     car_root.location=(0,0.65,0); car_root.keyframe_insert(data_path="location",frame=34)
