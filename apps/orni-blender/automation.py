@@ -171,7 +171,7 @@ def fetch_polyhaven_photo(asset_id, label):
         except OSError: pass
 
 
-def import_oga_psx_vehicle(car_root):
+def import_oga_psx_vehicle(car_root, photo_maps):
     """Import a CC0 PSX car from OpenGameArt when the free source pack is reachable."""
     url="https://opengameart.org/sites/default/files/psx_style_cars_by_ggbot_august2023.zip"
     cache=Path("/tmp/orni_psx_style_cars.zip")
@@ -242,6 +242,83 @@ def import_oga_psx_vehicle(car_root):
     except OSError: pass
     return vehicle
 
+
+def import_cc0_forest_pack(scene, photo_maps):
+    """Import real CC0 low-poly tree assets; pack materials and remove temporary archive."""
+    url="https://opengameart.org/sites/default/files/trees_and_plants_0.zip"
+    cache=Path("/tmp/orni_cc0_trees.zip")
+    extract=Path("/tmp/orni_cc0_trees")
+    if not cache.exists() or cache.stat().st_size<10000:
+        req=urllib.request.Request(url,headers={"User-Agent":"ORNI-Creative-Asset-Pipeline/1.0"})
+        with urllib.request.urlopen(req,timeout=60) as response: cache.write_bytes(response.read())
+    if extract.exists(): shutil.rmtree(extract,ignore_errors=True)
+    extract.mkdir(parents=True,exist_ok=True)
+    with zipfile.ZipFile(cache) as archive: archive.extractall(extract)
+    blend_files=sorted(extract.rglob("*.blend"))
+    if not blend_files:
+        raise RuntimeError("The CC0 forest pack downloaded but contained no Blender project.")
+    prototypes=[]
+    for blend_path in blend_files[:8]:
+        with bpy.data.libraries.load(str(blend_path),link=False) as (source,target):
+            target.objects=list(source.objects)
+        imported=[obj for obj in target.objects if obj]
+        for obj in imported:
+            if obj.name not in scene.objects:
+                scene.collection.objects.link(obj)
+        meshes=[obj for obj in imported if obj.type=="MESH"]
+        if not meshes: continue
+        bpy.ops.object.select_all(action="DESELECT")
+        for obj in meshes: obj.select_set(True)
+        bpy.context.view_layer.objects.active=meshes[0]
+        bpy.ops.object.join()
+        tree=bpy.context.object
+        tree.name="Imported CC0 low-poly forest tree | "+blend_path.stem
+        # Retain source maps; any untextured material receives a real photo-derived map.
+        for slot in tree.data.materials:
+            if not slot: continue
+            nodes=slot.node_tree.nodes if slot.use_nodes else None
+            has_image=bool(nodes and any(n.type=="TEX_IMAGE" and n.image for n in nodes))
+            if has_image:
+                for n in nodes:
+                    if n.type=="TEX_IMAGE" and n.image: n.interpolation="Closest"
+                continue
+            if not slot.use_nodes: slot.use_nodes=True
+            shader=slot.node_tree.nodes.get("Principled BSDF")
+            if not shader: continue
+            key="Tree bark" if any(word in slot.name.lower() for word in ("bark","trunk","wood")) else "Forest leaves"
+            uv=slot.node_tree.nodes.new("ShaderNodeUVMap"); uv.uv_map="UVMap"
+            tex=slot.node_tree.nodes.new("ShaderNodeTexImage"); tex.image=photo_maps[key]; tex.interpolation="Closest"; tex.extension="REPEAT"
+            slot.node_tree.links.new(uv.outputs["UV"],tex.inputs["Vector"])
+            slot.node_tree.links.new(tex.outputs["Color"],shader.inputs["Base Color"])
+        if not tree.data.materials:
+            slot=mat("CC0 tree | photo-derived forest leaves",(0.04,0.12,0.065),0,1)
+            uv=slot.node_tree.nodes.new("ShaderNodeUVMap"); uv.uv_map="UVMap"
+            tex=slot.node_tree.nodes.new("ShaderNodeTexImage"); tex.image=photo_maps["Forest leaves"]; tex.interpolation="Closest"
+            slot.node_tree.links.new(uv.outputs["UV"],tex.inputs["Vector"])
+            slot.node_tree.links.new(tex.outputs["Color"],slot.node_tree.nodes.get("Principled BSDF").inputs["Base Color"])
+            tree.data.materials.append(slot)
+        bpy.ops.object.transform_apply(location=False,rotation=True,scale=True)
+        verts=tree.data.vertices
+        if not verts: continue
+        min_x=min(v.co.x for v in verts); max_x=max(v.co.x for v in verts)
+        min_y=min(v.co.y for v in verts); max_y=max(v.co.y for v in verts)
+        min_z=min(v.co.z for v in verts); max_z=max(v.co.z for v in verts)
+        height=max(max_z-min_z,0.001); factor=7.5/height
+        center_x=(min_x+max_x)/2; center_y=(min_y+max_y)/2
+        for v in verts:
+            v.co.x=(v.co.x-center_x)*factor
+            v.co.y=(v.co.y-center_y)*factor
+            v.co.z=(v.co.z-min_z)*factor
+        tree.data.update(); tree.location=(0,0,0)
+        prototypes.append(tree)
+    shutil.rmtree(extract,ignore_errors=True)
+    try: cache.unlink()
+    except OSError: pass
+    if not prototypes:
+        raise RuntimeError("No usable mesh models were found in the CC0 forest pack.")
+    return prototypes
+
+
 def create_crash_woods_cinema():
     """Rebuilt PS1/PS2 crash-woods short with authored geometry, grunge maps and edited shots."""
     import random
@@ -263,32 +340,31 @@ def create_crash_woods_cinema():
         try:
             photo_maps[label]=fetch_polyhaven_photo(asset_id,label)
         except Exception as exc:
-            raise RuntimeError("Required CC0 photographic texture download failed for "+asset_id+": "+str(exc))
-    def textured_mat(name, base, rough=0.9, seed=1, metallic=0.0, photo=None):
-        m=mat(name,base,metallic,rough)
-        image=photo_maps.get(photo) if photo else None
-        if image is None:
-            raise RuntimeError("No photographic PSX texture assigned to major material: "+name)
-        nodes=m.node_tree.nodes; shader=nodes.get("Principled BSDF")
-        tex=nodes.new("ShaderNodeTexImage"); tex.name=name+" | 64px photo-derived PSX atlas"
-        tex.image=image; tex.interpolation="Closest"; tex.extension="REPEAT"
-        m.node_tree.links.new(tex.outputs["Color"],shader.inputs["Base Color"])
-        return m
+            raise RuntimeError("Required CC0 photographic texture     # Use imported CC0 forest models, not cone-shaped placeholders.
+    tree_models=import_cc0_forest_pack(scene,photo_maps)
+    tree_index=0
+    for side in (-1,1):
+        for i in range(27):
+            y=-28+i*2.1+random.uniform(-0.65,0.65)
+            x=side*random.uniform(5.1,11.5)
+            prototype=tree_models[tree_index%len(tree_models)]; tree_index+=1
+            tree=prototype if tree_index<=len(tree_models) else prototype.copy()
+            if tree is not prototype:
+                tree.data=prototype.data
+                scene.collection.objects.link(tree)
+            tree.name="Forest pine | imported CC0 low-poly model"
+            scale=random.uniform(0.78,1.22)
+            tree.scale=(scale,scale,scale)
+            tree.location=(x,y,0)
+            tree.rotation_euler[2]=random.uniform(-math.pi,math.pi)
+    # A second imported tree anchors the impact and gives the shot a readable landmark.
+    impact_tree=tree_models[0].copy(); impact_tree.data=tree_models[0].data
+    scene.collection.objects.link(impact_tree)
+    impact_tree.name="Impact cedar | imported CC0 low-poly model"
+    impact_tree.scale=(1.35,1.35,1.35); impact_tree.location=(1.18,-1.8,0)
+    impact_tree.rotation_euler[2]=0.42
 
-    def mesh_obj(name, verts, faces, material, bevel=0):
-        mesh=bpy.data.meshes.new(name+" mesh"); mesh.from_pydata(verts,[],faces); mesh.materials.append(material); mesh.update()
-        obj=bpy.data.objects.new(name,mesh); scene.collection.objects.link(obj)
-        if bevel:
-            mod=obj.modifiers.new("Controlled low-poly edge chamfer","BEVEL"); mod.width=bevel; mod.segments=1
-            obj.modifiers.new("Weighted normals","WEIGHTED_NORMAL")
-        return obj
-
-    def box_mesh(name, center, size, material, bevel=0):
-        x,y,z=center; a,b,c=(v/2 for v in size)
-        verts=[(x-a,y-b,z-c),(x+a,y-b,z-c),(x+a,y+b,z-c),(x-a,y+b,z-c),
-               (x-a,y-b,z+c),(x+a,y-b,z+c),(x+a,y+b,z+c),(x-a,y+b,z+c)]
-        faces=[(0,3,2,1),(4,5,6,7),(0,1,5,4),(1,2,6,5),(2,3,7,6),(3,0,4,7)]
-        return mesh_obj(name,verts,faces,material,bevel)
+me,verts,faces,material,bevel)
 
     def tapered_limb(name, p1, p2, r1, r2, material, sides=7):
         # Geometry is stored relative to its proximal endpoint so rotations pivot at the joint.
@@ -400,7 +476,7 @@ def create_crash_woods_cinema():
         car_part(tapered_limb("Hood crease | impact damage",(x,-1.95,1.34),(x+0.12,-0.95,1.37),0.018,0.012,metal,4))
     external_vehicle=None
     try:
-        external_vehicle=import_oga_psx_vehicle(car_root)
+        external_vehicle=import_oga_psx_vehicle(car_root,photo_maps)
     except Exception as exc:
         raise RuntimeError("CC0 PSX vehicle asset import failed: "+str(exc))
     if external_vehicle:
@@ -603,7 +679,7 @@ def create_crash_woods_cinema():
     set_job_status(stage="Validating deliverables",progress=98)
     if not (OUT/"orni_crash_woods.blend").is_file() or not (OUT/"orni_crash_woods_preview.png").is_file():
         raise RuntimeError("Required Blender project or style-frame preview is missing.")
-    return {"ok":True,"scene":"ORNI rebuilt PS1/PS2 crash-woods short","style":"authored-psx-cutscene","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"resolutionX":540,"resolutionY":960,"sourceResolution":"180x320","aspectRatio":"9:16","uvMappedMeshes":uv_mesh_count,"textureResolution":"64x64 photo-derived CC0 maps with 5-bit Bayer dithering and nearest-neighbour sampling","cameraShots":4,"cameraContactSheet":true,"cameraFramingValidated":true,"externalVehicleAsset":"OpenGameArt PSX Style Cars by GGBotNet (CC0)","textureSources":["Poly Haven Asphalt 01","Poly Haven Pine Bark","Poly Haven Forest Ground 04","Poly Haven Forest Leaves 04","Poly Haven Rusty Painted Metal","Poly Haven Polystyrene","Poly Haven Rubber Tiles","Poly Haven Metal Plate"],"assetAttribution":"Powered by Poly Haven API; CC0 assets. Vehicle: GGBotNet/OpenGameArt CC0.","decodeValidated":True,"note":"Imported CC0 PSX vehicle, custom low-poly forest and articulated crash dummy, real CC0 photo-derived texture maps, four-shot vertical contact sheet, camera framing validation and 9:16 master. Technical validation is not human playback approval."}
+    return {"ok":True,"scene":"ORNI rebuilt PS1/PS2 crash-woods short","style":"authored-psx-cutscene","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"resolutionX":540,"resolutionY":960,"sourceResolution":"180x320","aspectRatio":"9:16","uvMappedMeshes":uv_mesh_count,"textureResolution":"64x64 photo-derived CC0 maps with 5-bit Bayer dithering and nearest-neighbour sampling","cameraShots":4,"cameraContactSheet":true,"cameraFramingValidated":true,"externalVehicleAsset":"OpenGameArt PSX Style Cars by GGBotNet (CC0)","textureSources":["Poly Haven Asphalt 01","Poly Haven Pine Bark","Poly Haven Forest Ground 04","Poly Haven Forest Leaves 04","Poly Haven Rusty Painted Metal","Poly Haven Polystyrene","Poly Haven Rubber Tiles","Poly Haven Metal Plate"],"forestModelSource":"OpenGameArt Tree and plants low poly 3d models by methodical pixel (CC0)","assetAttribution":"Powered by Poly Haven API; CC0 assets. Vehicle: GGBotNet/OpenGameArt CC0. Forest models: methodical pixel/OpenGameArt CC0.","decodeValidated":True,"note":"Imported CC0 PSX vehicle, custom low-poly forest and articulated crash dummy, real CC0 photo-derived texture maps, four-shot vertical contact sheet, camera framing validation and 9:16 master. Technical validation is not human playback approval."}
 
 def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""):
     if style == "crash-woods": return create_crash_woods_cinema()
