@@ -41,6 +41,57 @@ function requireAgentToken(req, res, next) {
 }
 
 
+async function runOrniWebResearch(rawQuery) {
+  const query=String(rawQuery||"").trim().slice(0,300);
+  if(!query) throw new Error("A research query is required.");
+  const response=await fetch("https://html.duckduckgo.com/html/?q="+encodeURIComponent(query),{
+    headers:{"User-Agent":"Mozilla/5.0 (compatible; ORNIResearch/1.0)","Accept":"text/html"},
+    signal:AbortSignal.timeout(12000)
+  });
+  if(!response.ok) throw new Error("Public search returned HTTP "+response.status);
+  const html=await response.text();
+  const decode=(value)=>String(value||"").replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&#(\\d+);/g,(_,n)=>String.fromCharCode(Number(n))).replace(/&#x([0-9a-f]+);/gi,(_,n)=>String.fromCharCode(parseInt(n,16)));
+  const clean=(value)=>decode(String(value||"").replace(/<script[\\s\\S]*?<\\/script>/gi," ").replace(/<style[\\s\\S]*?<\\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/\\s+/g," ").trim());
+  const anchors=[...html.matchAll(/<a\\b(?=[^>]*class=["'][^"']*result__a)([^>]*)>([\\s\\S]*?)<\\/a>/gi)];
+  const snippets=[...html.matchAll(/<(?:a|div|td)[^>]*class=["'][^"']*result__snippet[^"']*["'][^>]*>([\\s\\S]*?)<\\/(?:a|div|td)>/gi)].map(m=>clean(m[1]));
+  const allowedHosts=["blender.org","blenderartists.org","blender.stackexchange.com","youtube.com","youtu.be","pinterest.com","opengameart.org","polyhaven.com","ambientcg.com","itch.io","github.com","reddit.com","cgcookie.com","devtalk.blender.org"];
+  const allowed=(host)=>allowedHosts.some(domain=>host===domain||host.endsWith("."+domain));
+  const results=[];
+  for(let i=0;i<anchors.length&&results.length<6;i++){
+    const href=(anchors[i][1]||"").match(/href=["']([^"']+)["']/i)?.[1]||"";
+    let target="";
+    try{
+      const parsed=new URL(href.startsWith("//")?"https:"+href:href);
+      target=parsed.searchParams.get("uddg")||parsed.href;
+      const u=new URL(target);
+      if(!["https:","http:"].includes(u.protocol)||["localhost","127.0.0.1","0.0.0.0","::1"].includes(u.hostname)) continue;
+      target=u.href;
+    }catch{continue;}
+    const title=clean(anchors[i][2]);
+    if(!title) continue;
+    const item={title,url:target,snippet:snippets[i]||"",domain:new URL(target).hostname,sourceText:null};
+    if(allowed(item.domain)){
+      try{
+        let current=target,pageResponse=null;
+        for(let hop=0;hop<3;hop++){
+          if(!allowed(new URL(current).hostname)) break;
+          pageResponse=await fetch(current,{headers:{"User-Agent":"Mozilla/5.0 (compatible; ORNIResearch/1.0)","Accept":"text/html"},redirect:"manual",signal:AbortSignal.timeout(7000)});
+          if(pageResponse.status>=300&&pageResponse.status<400){
+            const location=pageResponse.headers.get("location"); if(!location) break;
+            current=new URL(location,current).href; continue;
+          }
+          break;
+        }
+        if(pageResponse?.ok&&/text\\/html/i.test(pageResponse.headers.get("content-type")||"")){
+          item.sourceText=clean(await pageResponse.text()).slice(0,3600);
+        }
+      }catch{/* Keep search snippet when a source blocks page retrieval. */}
+    }
+    results.push(item);
+  }
+  return {query,provider:"DuckDuckGo HTML (no API key)",searchedAt:new Date().toISOString(),results};
+}
+
 const referenceCinemaPlaybook = `
 ORNI REFERENCE CINEMA PLAYBOOK — VERSION 3.1 — PERMANENT PRODUCTION STANDARD
 These references are mandatory craft knowledge, not optional inspiration. Apply them to every retro animation, PS1/PS2 game cinematic, character short, fashion film and CELVANI campaign. Choose the correct style family; do not blend them carelessly.
@@ -167,6 +218,18 @@ Do not imply that a recommendation is an executed action. Return only data match
 registerCreativeRoutes(app, { requireAgentToken, systemPrompt: orniSystemPrompt });
 
 app.get("/api/orni/reference-cinema", requireAgentToken, (_req,res) => res.json({ok:true,engine:"Blender + Python + FFmpeg",freeOnly:true,presets:[{id:"ps1",name:"PS1 Low-Poly Retro",references:[{creator:"DUMBDAYS!",title:"How to make PS1 / low-poly / retro animations in Blender",role:"animation and retro scene workflow",url:"https://youtu.be/MxTz8vNY7XE"},{creator:"NoPoly",title:"How to make PSX/PS1 Graphics For Game Development In Blender",role:"PSX graphics workflow using Blender and Photoshop",url:"https://www.youtube.com/watch?v=nDaon0o_qoM"}],summary:"DUMBDAYS! reference: project setup through modeling, character texturing/rigging, environment, animation, cameras, pixel render, export and finishing. NoPoly confirms a Blender + Photoshop PSX graphics workflow. ORNI adds free-tool UV, photographic atlas, 5-bit quantization, Bayer dithering, nearest-neighbour, fixed-camera composition and evidence-based QA standards. CC0 vehicle and tree assets plus CC0 photo maps are documented in the playbook."},{id:"ps2-cutscene",name:"PS2 Cutscene Comedy",reference:"Luca Maxim TikTok format",summary:"Stylized game character, deadpan dialogue framing, cinematic cuts, pauses, captions and nostalgic early-2000s game look."}],playbookVersion:"3.1",referenceCount:6,knowledgeSource:"permanent embedded ORNI production standard"}));
+
+app.post("/api/orni/research", requireAgentToken, async (req,res) => {
+  const query=typeof req.body?.query==="string"?req.body.query.trim():"";
+  if(!query) return res.status(400).json({error:"query is required"});
+  if(query.length>300) return res.status(413).json({error:"query must be 300 characters or fewer"});
+  try{
+    const research=await runOrniWebResearch(query);
+    return res.status(200).json({agent:"ORNI",domain:"CELVANI",research,limitations:"Search snippets are public web evidence. Full-page extracts are attempted only for approved creative/reference domains. Verify dates, original sources and asset licenses before production use."});
+  }catch(error){
+    return res.status(502).json({error:"ORNI could not complete public web research",detail:String(error?.message||error)});
+  }
+});
 
 app.get("/health", (_req, res) => {
   res.status(200).json({
@@ -405,6 +468,13 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
     return res.status(503).json({ error: "Groq model provider is not configured", required: ["GROQ_API_KEY"] });
   }
 
+  let liveResearch=null;
+  const wantsResearch=req.body?.liveResearch===true||typeof req.body?.researchQuery==="string"||/\\b(research|reference|references|tutorial|blender|ps1|ps2|psx|low[\\s-]?poly|asset|textures?|workflow|accurate|current|latest|trend|competitor|supplier)\\b/i.test(mission);
+  if(wantsResearch){
+    try{liveResearch=await runOrniWebResearch(req.body?.researchQuery||mission);}
+    catch(error){liveResearch={query:req.body?.researchQuery||mission,results:[],error:String(error?.message||error)};}
+  }
+
   const model = process.env.ORNI_MODEL || "qwen/qwen3.8-27b";
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45000);
@@ -413,7 +483,7 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
     const requestBody = {
       model,
       messages: [
-        { role: "system", content: orniSystemPrompt + "\\nReturn ONLY one valid JSON object with exactly these keys: mission (string), findings (string array), intelligence (string array), opportunities (string array), risks (string array), recommendation (string), approvalRequired (boolean), assumptions (string array), nextActions (string array). No markdown, no code fences, no extra keys. Keep each array to at most 3 concise items and avoid repeating information." },
+        { role: "system", content: orniSystemPrompt + (liveResearch ? "\\nLIVE WEB RESEARCH (retrieved now):\\n"+JSON.stringify(liveResearch).slice(0,10500)+"\\nUse source URLs and titles in findings/intelligence when relevant. Separate observed facts from inference; state when a source is only a search snippet. Verify asset licenses from original license pages; Pinterest is moodboard-only, never proof of asset rights.\\n" : "") + "\\nReturn ONLY one valid JSON object with exactly these keys: mission (string), findings (string array), intelligence (string array), opportunities (string array), risks (string array), recommendation (string), approvalRequired (boolean), assumptions (string array), nextActions (string array). No markdown, no code fences, no extra keys. Keep each array to at most 3 concise items and avoid repeating information." },
         { role: "user", content: mission }
       ],
       // Keep the requested completion small enough for Groq's free OTPM allowance.
@@ -519,6 +589,7 @@ app.post("/api/orni/mission", requireAgentToken, async (req, res) => {
       provider: "groq",
       model,
       report,
+      research: liveResearch,
       approvalRequired: report.approvalRequired,
       generatedAt: new Date().toISOString(),
       execution: "analysis_only"
