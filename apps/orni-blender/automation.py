@@ -291,6 +291,7 @@ def create_crash_woods_cinema():
         return mesh_obj(name,verts,faces,material,bevel)
 
     def tapered_limb(name, p1, p2, r1, r2, material, sides=7):
+        # Geometry is stored relative to its proximal endpoint so rotations pivot at the joint.
         a=Vector(p1); b=Vector(p2); axis=(b-a).normalized()
         helper=Vector((0,0,1)) if abs(axis.z)<0.92 else Vector((0,1,0))
         u=axis.cross(helper).normalized(); v=axis.cross(u).normalized()
@@ -298,14 +299,16 @@ def create_crash_woods_cinema():
         for point,radius in ((a,r1),(b,r2)):
             for i in range(sides):
                 angle=2*math.pi*i/sides
-                q=point+radius*(math.cos(angle)*u+math.sin(angle)*v)
+                q=(point-a)+radius*(math.cos(angle)*u+math.sin(angle)*v)
                 verts.append(tuple(q))
         faces=[]
         for i in range(sides):
             j=(i+1)%sides
             faces.append((i,j,sides+j,sides+i))
         faces.extend([tuple(range(sides-1,-1,-1)),tuple(range(sides,2*sides))])
-        return mesh_obj(name,verts,faces,material)
+        obj=mesh_obj(name,verts,faces,material)
+        obj.location=a
+        return obj
 
     def parent_local(obj, root):
         obj.parent=root
