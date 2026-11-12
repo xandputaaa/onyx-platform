@@ -148,6 +148,8 @@ app.get("/api/orni/blender/job-status", (req, res) => orniForward(req, res, "/ap
 app.get("/api/orni/blender/status", (req, res) => orniForward(req, res, "/api/orni/blender/status"));
 app.post("/api/orni/blender/scene/celvani-hoodie", (req, res) => orniForward(req, res, "/api/orni/blender/scene/celvani-hoodie", "POST"));
 
+app.post("/api/orni/research", (req,res) => orniForward(req,res,"/api/orni/research","POST"));
+
 app.post("/api/orni/mission", async (req, res) => {
   const mission = req.body?.mission;
   if (typeof mission !== "string" || !mission.trim() || mission.length > 6000) {
@@ -163,7 +165,7 @@ app.post("/api/orni/mission", async (req, res) => {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${process.env.ORNI_ACCESS_TOKEN}`
       },
-      body: JSON.stringify({ mission: mission.trim(), requestId: crypto.randomUUID() }),
+      body: JSON.stringify({ mission: mission.trim(), requestId: crypto.randomUUID(), liveResearch: req.body?.liveResearch===true, researchQuery: typeof req.body?.researchQuery==="string" ? req.body.researchQuery.slice(0,300) : undefined }),
       signal: AbortSignal.timeout(90000)
     });
     const payload = await upstream.json().catch(() => ({ error: "ORNI returned an unreadable response." }));
