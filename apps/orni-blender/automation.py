@@ -435,7 +435,12 @@ def create_crash_woods_cinema():
         for joint_loc in (shoulder,elbow,wrist,hip,knee,ankle):
             bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1,radius=0.105,location=joint_loc)
             j=bpy.context.object; j.name="Dummy joint | dark mechanical bearing"; j.data.materials.append(joint_mat); dummy_piece(j)
-        foot=dummy_piece(box_mesh("Dummy foot | broad planted sole",(side*0.24,-0.28,0.07),(0.28,0.48,0.13),joint_mat,0.025))
+        foot_obj=box_mesh("Dummy foot | broad planted sole",(side*0.24,-0.28,0.07),(0.28,0.48,0.13),joint_mat,0.025)
+        bpy.ops.object.select_all(action="DESELECT"); foot_obj.select_set(True); bpy.context.view_layer.objects.active=foot_obj
+        bpy.context.scene.cursor.location=Vector(ankle)
+        bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+        bpy.context.scene.cursor.location=(0,0,0)
+        foot=dummy_piece(foot_obj)
         limb_rigs.append((side,upper,lower,thigh,shin,foot))
     # Door swings open to camera-facing side; door is a custom panel on a hinge empty.
     door_hinge=bpy.data.objects.new("Driver door | hinge",None); scene.collection.objects.link(door_hinge)
