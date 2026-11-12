@@ -83,6 +83,30 @@ async function orniForward(req, res, route, method = "GET") {
 }
 app.get("/api/orni/reference-cinema", (req, res) => orniForward(req, res, "/api/orni/reference-cinema"));
 app.post("/api/orni/blender/scene/retro-cinema", (req,res) => orniForward(req,res,"/api/orni/blender/scene/retro-cinema","POST"));
+
+let crashWoodsTriggerUsed=false;
+app.get("/api/orni/internal/trigger-crash-woods", async (req,res) => {
+  const supplied=String(req.query?.key||"");
+  const expected=process.env.ORNI_BUILD_TRIGGER_TOKEN||"";
+  if(!expected||supplied.length!==expected.length||supplied!==expected) return res.status(404).json({error:"Not found"});
+  if(crashWoodsTriggerUsed) return res.status(409).json({error:"This one-time production trigger has already been used."});
+  crashWoodsTriggerUsed=true;
+  if(!process.env.ORNI_ACCESS_TOKEN) return res.status(503).json({error:"ORNI authentication is not configured."});
+  try{
+    const upstream=await fetch(`${orniBase}/api/orni/blender/scene/retro-cinema`,{
+      method:"POST",
+      headers:{"Authorization":"Bearer "+process.env.ORNI_ACCESS_TOKEN,"Content-Type":"application/json"},
+      body:JSON.stringify({style:"crash-woods",duration:15,aspectRatio:"9:16",caption:""}),
+      signal:AbortSignal.timeout(20000)
+    });
+    const payload=await upstream.json().catch(()=>({error:"ORNI returned an unreadable response."}));
+    return res.status(upstream.status).json({trigger:"one-time crash-woods production",...payload});
+  }catch(error){
+    return res.status(error?.name==="TimeoutError"?504:502).json({error:"Could not hand the production job to ORNI.",detail:String(error?.message||error)});
+  }
+});
+
+
 app.get("/api/orni/blender/retro-preview", async (_req,res) => {
   if(!process.env.ORNI_ACCESS_TOKEN)return res.status(503).json({error:"ONYX-to-ORNI authentication is not configured."});
   try{
