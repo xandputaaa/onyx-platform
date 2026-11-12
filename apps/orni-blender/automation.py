@@ -36,23 +36,30 @@ def set_compatible_eevee(scene):
     raise RuntimeError("This Blender build supports neither Eevee Next nor Eevee.")
 
 def unwrap_scene_meshes():
-    """Create deliberate UVs for every mesh using Blender's native smart projection."""
+    """Generate/validate UVs per mesh datablock; Blender's multi-object smart-project can skip active data."""
     meshes=[obj for obj in bpy.context.scene.objects if obj.type=="MESH"]
     if not meshes:
         return 0
-    bpy.ops.object.select_all(action="DESELECT")
+    seen=set()
     for obj in meshes:
-        obj.select_set(True)
-    bpy.context.view_layer.objects.active=meshes[0]
-    bpy.ops.object.mode_set(mode="EDIT")
-    bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.uv.smart_project(island_margin=0.025)
-    bpy.ops.object.mode_set(mode="OBJECT")
-    for obj in meshes:
+        mesh_key=obj.data.as_pointer()
+        if mesh_key in seen:
+            continue
+        seen.add(mesh_key)
         if not obj.data.polygons:
             raise RuntimeError("UV validation failed: mesh has no polygon data: "+obj.name)
         if not obj.data.uv_layers or not obj.data.uv_layers.active:
-            raise RuntimeError("UV validation failed: missing UV map on "+obj.name)
+            if obj.mode!="OBJECT":
+                bpy.ops.object.mode_set(mode="OBJECT")
+            bpy.ops.object.select_all(action="DESELECT")
+            obj.select_set(True)
+            bpy.context.view_layer.objects.active=obj
+            bpy.ops.object.mode_set(mode="EDIT")
+            bpy.ops.mesh.select_all(action="SELECT")
+            bpy.ops.uv.smart_project(island_margin=0.025)
+            bpy.ops.object.mode_set(mode="OBJECT")
+        if not obj.data.uv_layers or not obj.data.uv_layers.active:
+            raise RuntimeError("UV validation failed: per-mesh smart projection did not create an active UV map on "+obj.name)
         uv_data=obj.data.uv_layers.active.data
         if len(uv_data)!=len(obj.data.loops):
             raise RuntimeError("UV validation failed: incomplete UV coordinates on "+obj.name)
@@ -60,16 +67,19 @@ def unwrap_scene_meshes():
             if not (math.isfinite(item.uv.x) and math.isfinite(item.uv.y)):
                 raise RuntimeError("UV validation failed: non-finite UV coordinate on "+obj.name)
         for material in obj.data.materials:
-            if not material or not material.use_nodes: continue
+            if not material or not material.use_nodes:
+                continue
             for node in material.node_tree.nodes:
                 if node.type=="TEX_IMAGE":
                     if not node.image or not node.image.has_data:
                         raise RuntimeError("Texture validation failed: missing image data in "+material.name+" on "+obj.name)
                     node.interpolation="Closest"
-                    try: node.image.pack()
-                    except Exception: pass
+                    try:
+                        node.image.pack()
+                    except Exception:
+                        pass
+    bpy.ops.object.select_all(action="DESELECT")
     return len(meshes)
-
 
 def apply_psx_pixel_texture(material, base_color, label, seed=0):
     """Build a tiny deterministic 16x16 texture with nearest-neighbour sampling."""
