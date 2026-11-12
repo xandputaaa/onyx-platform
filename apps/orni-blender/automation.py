@@ -537,6 +537,8 @@ def create_crash_woods_cinema():
             raise RuntimeError("Camera framing validation failed at frame "+str(sample_frame)+": "+str(camera_report[-1]))
     scene["ORNI_Camera_Frames_Validated"]=True
     scene["ORNI_Camera_Validation_Report"]=json.dumps(camera_report)
+    scene["ORNI_Texture_Provenance"]="Poly Haven CC0 photographic diffuse maps; 64px; 5-bit/channel Bayer dither; nearest-neighbour"
+    scene["ORNI_Model_Provenance"]="GGBotNet PSX Style Cars; OpenGameArt; CC0"
     for obj in scene.objects:
         if obj.animation_data and obj.animation_data.action:
             for fc in obj.animation_data.action.fcurves:
@@ -546,10 +548,28 @@ def create_crash_woods_cinema():
     set_job_status(stage="UV unwrapping and texture validation",progress=32)
     uv_mesh_count=unwrap_scene_meshes()
     scene.render.image_settings.file_format="PNG"
-    scene.render.filepath=str(OUT/"orni_crash_woods_preview.png")
-    scene.frame_set(35)
-    set_job_status(stage="Rendering style-frame preview",progress=36)
-    bpy.ops.render.render(write_still=True)
+    preview_dir=OUT/"orni_crash_woods_shot_previews"
+    if preview_dir.exists(): shutil.rmtree(preview_dir,ignore_errors=True)
+    preview_dir.mkdir(parents=True,exist_ok=True)
+    set_job_status(stage="Rendering four-shot contact sheet",progress=36)
+    preview_frames=(14,50,100,165)
+    for index,preview_frame in enumerate(preview_frames,1):
+        scene.frame_set(preview_frame)
+        scene.render.filepath=str(preview_dir/("shot_%02d.png"%index))
+        bpy.ops.render.render(write_still=True)
+    preview_file=OUT/"orni_crash_woods_preview.png"
+    try:
+        subprocess.run([
+            "ffmpeg","-y","-i",str(preview_dir/"shot_01.png"),"-i",str(preview_dir/"shot_02.png"),
+            "-i",str(preview_dir/"shot_03.png"),"-i",str(preview_dir/"shot_04.png"),
+            "-filter_complex",
+            "[0:v]scale=360:640:flags=neighbor[a];[1:v]scale=360:640:flags=neighbor[b];[2:v]scale=360:640:flags=neighbor[c];[3:v]scale=360:640:flags=neighbor[d];[a][b][c][d]xstack=inputs=4:layout=0_0|360_0|0_640|360_640[out]",
+            "-map","[out]","-frames:v","1",str(preview_file)
+        ],check=True,capture_output=True,text=True,timeout=60)
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError("Four-shot contact sheet generation failed: "+(exc.stderr or "unknown error")[-900:])
+    finally:
+        shutil.rmtree(preview_dir,ignore_errors=True)
     set_job_status(stage="Saving editable Blender project",progress=40)
     bpy.ops.wm.save_as_mainfile(filepath=str(OUT/"orni_crash_woods.blend"))
     frames_dir=OUT/"orni_crash_woods_frames"
@@ -575,7 +595,7 @@ def create_crash_woods_cinema():
     set_job_status(stage="Validating deliverables",progress=98)
     if not (OUT/"orni_crash_woods.blend").is_file() or not (OUT/"orni_crash_woods_preview.png").is_file():
         raise RuntimeError("Required Blender project or style-frame preview is missing.")
-    return {"ok":True,"scene":"ORNI rebuilt PS1/PS2 crash-woods short","style":"authored-psx-cutscene","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"resolutionX":540,"resolutionY":960,"sourceResolution":"180x320","aspectRatio":"9:16","uvMappedMeshes":uv_mesh_count,"textureResolution":"64x64 photo-derived CC0 maps with 5-bit Bayer dithering and nearest-neighbour sampling","cameraShots":4,"externalVehicleAsset":"OpenGameArt PSX Style Cars by GGBotNet (CC0)","textureSources":["Poly Haven Asphalt 01","Poly Haven Pine Bark","Poly Haven Forest Ground 04","Poly Haven Rusty Painted Metal","Poly Haven Polystyrene","Poly Haven Rubber Tiles","Poly Haven Metal Plate"],"assetAttribution":"Powered by Poly Haven API; CC0 assets. Vehicle: GGBotNet/OpenGameArt CC0.","decodeValidated":True,"note":"Custom vehicle/forest geometry, authored low-resolution grunge maps, articulated crash dummy, staged door exit and four-shot camera edit. Technical validation is not human playback approval."}
+    return {"ok":True,"scene":"ORNI rebuilt PS1/PS2 crash-woods short","style":"authored-psx-cutscene","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"resolutionX":540,"resolutionY":960,"sourceResolution":"180x320","aspectRatio":"9:16","uvMappedMeshes":uv_mesh_count,"textureResolution":"64x64 photo-derived CC0 maps with 5-bit Bayer dithering and nearest-neighbour sampling","cameraShots":4,"cameraContactSheet":true,"cameraFramingValidated":true,"externalVehicleAsset":"OpenGameArt PSX Style Cars by GGBotNet (CC0)","textureSources":["Poly Haven Asphalt 01","Poly Haven Pine Bark","Poly Haven Forest Ground 04","Poly Haven Rusty Painted Metal","Poly Haven Polystyrene","Poly Haven Rubber Tiles","Poly Haven Metal Plate"],"assetAttribution":"Powered by Poly Haven API; CC0 assets. Vehicle: GGBotNet/OpenGameArt CC0.","decodeValidated":True,"note":"Imported CC0 PSX vehicle, custom low-poly forest and articulated crash dummy, real CC0 photo-derived texture maps, four-shot vertical contact sheet, camera framing validation and 9:16 master. Technical validation is not human playback approval."}
 
 def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""):
     if style == "crash-woods": return create_crash_woods_cinema()
