@@ -227,10 +227,12 @@ def import_oga_psx_vehicle(car_root, photo_maps):
             image_nodes=[node for node in material.node_tree.nodes if node.type=="TEX_IMAGE"]
             has_image=any(node.image and node.image.has_data for node in image_nodes)
             for node in image_nodes:
-                if node.image and node.image.has_data:
-                    node.interpolation="Closest"
-                    try: node.image.pack()
-                    except Exception: pass
+                if not node.image or not node.image.has_data:
+                    material.node_tree.nodes.remove(node)
+                    continue
+                node.interpolation="Closest"
+                try: node.image.pack()
+                except Exception: pass
             shader=material.node_tree.nodes.get("Principled BSDF")
             if not has_image and shader:
                 tex=material.node_tree.nodes.new("ShaderNodeTexImage")
@@ -309,12 +311,14 @@ def import_cc0_forest_pack(scene, photo_maps):
             nodes=slot.node_tree.nodes if slot.use_nodes else None
             image_nodes=[n for n in nodes or [] if n.type=="TEX_IMAGE"]
             has_image=any(n.image and n.image.has_data for n in image_nodes)
+            for n in image_nodes:
+                if not n.image or not n.image.has_data:
+                    slot.node_tree.nodes.remove(n)
+                    continue
+                n.interpolation="Closest"
+                try: n.image.pack()
+                except Exception: pass
             if has_image:
-                for n in image_nodes:
-                    if n.image and n.image.has_data:
-                        n.interpolation="Closest"
-                        try: n.image.pack()
-                        except Exception: pass
                 continue
             if not slot.use_nodes: slot.use_nodes=True
             shader=slot.node_tree.nodes.get("Principled BSDF")
