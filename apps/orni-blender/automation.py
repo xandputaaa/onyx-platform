@@ -36,8 +36,8 @@ def set_compatible_eevee(scene):
     raise RuntimeError("This Blender build supports neither Eevee Next nor Eevee.")
 
 def unwrap_scene_meshes():
-    """Generate/validate UVs per mesh datablock; Blender's multi-object smart-project can skip active data."""
-    meshes=[obj for obj in bpy.context.scene.objects if obj.type=="MESH"]
+    """Generate/validate UVs per renderable mesh; handle hidden Blender objects safely."""
+    meshes=[obj for obj in bpy.context.scene.objects if obj.type=="MESH" and not obj.hide_render]
     if not meshes:
         return 0
     seen=set()
@@ -49,15 +49,28 @@ def unwrap_scene_meshes():
         if not obj.data.polygons:
             raise RuntimeError("UV validation failed: mesh has no polygon data: "+obj.name)
         if not obj.data.uv_layers or not obj.data.uv_layers.active:
-            if obj.mode!="OBJECT":
+            was_hidden=obj.hide_get()
+            was_hide_viewport=obj.hide_viewport
+            try:
+                if bpy.context.object and bpy.context.object.mode!="OBJECT":
+                    bpy.ops.object.mode_set(mode="OBJECT")
+                if was_hide_viewport:
+                    obj.hide_viewport=False
+                if was_hidden:
+                    obj.hide_set(False)
+                bpy.ops.object.select_all(action="DESELECT")
+                obj.select_set(True)
+                bpy.context.view_layer.objects.active=obj
+                bpy.ops.object.mode_set(mode="EDIT")
+                bpy.ops.mesh.select_all(action="SELECT")
+                bpy.ops.uv.smart_project(island_margin=0.025)
                 bpy.ops.object.mode_set(mode="OBJECT")
-            bpy.ops.object.select_all(action="DESELECT")
-            obj.select_set(True)
-            bpy.context.view_layer.objects.active=obj
-            bpy.ops.object.mode_set(mode="EDIT")
-            bpy.ops.mesh.select_all(action="SELECT")
-            bpy.ops.uv.smart_project(island_margin=0.025)
-            bpy.ops.object.mode_set(mode="OBJECT")
+            finally:
+                if bpy.context.object and bpy.context.object.mode!="OBJECT":
+                    bpy.ops.object.mode_set(mode="OBJECT")
+                if was_hidden:
+                    obj.hide_set(True)
+                obj.hide_viewport=was_hide_viewport
         if not obj.data.uv_layers or not obj.data.uv_layers.active:
             raise RuntimeError("UV validation failed: per-mesh smart projection did not create an active UV map on "+obj.name)
         uv_data=obj.data.uv_layers.active.data
