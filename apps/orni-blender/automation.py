@@ -345,34 +345,37 @@ def create_crash_woods_cinema():
         try:
             photo_maps[label]=fetch_polyhaven_photo(asset_id,label)
         except Exception as exc:
-            raise RuntimeError("Required CC0 photographic texture     # Use imported CC0 forest models, not cone-shaped placeholders.
-    tree_models=import_cc0_forest_pack(scene,photo_maps)
-    tree_index=0
-    for side in (-1,1):
-        for i in range(27):
-            y=-28+i*2.1+random.uniform(-0.65,0.65)
-            x=side*random.uniform(5.1,11.5)
-            prototype=tree_models[tree_index%len(tree_models)]; tree_index+=1
-            tree=prototype if tree_index<=len(tree_models) else prototype.copy()
-            if tree is not prototype:
-                tree.data=prototype.data
-                scene.collection.objects.link(tree)
-            tree.name="Forest pine | imported CC0 low-poly model"
-            scale=random.uniform(0.78,1.22)
-            tree.scale=(scale,scale,scale)
-            tree.location=(x,y,0)
-            tree.rotation_euler[2]=random.uniform(-math.pi,math.pi)
-    # A second imported tree anchors the impact and gives the shot a readable landmark.
-    impact_tree=tree_models[0].copy(); impact_tree.data=tree_models[0].data
-    scene.collection.objects.link(impact_tree)
-    impact_tree.name="Impact cedar | imported CC0 low-poly model"
-    impact_tree.scale=(1.35,1.35,1.35); impact_tree.location=(1.18,-1.8,0)
-    impact_tree.rotation_euler[2]=0.42
+            raise RuntimeError("Required CC0 photographic texture download failed for "+asset_id+": "+str(exc))
 
-me,verts,faces,material,bevel)
+    def textured_mat(name, base, rough=0.9, seed=1, metallic=0.0, photo=None):
+        m=mat(name,base,metallic,rough)
+        image=photo_maps.get(photo) if photo else None
+        if image is None:
+            raise RuntimeError("No photographic PSX texture assigned to major material: "+name)
+        nodes=m.node_tree.nodes; shader=nodes.get("Principled BSDF")
+        uv=nodes.new("ShaderNodeUVMap"); uv.uv_map="UVMap"; uv.name=name+" | explicit UV coordinates"
+        tex=nodes.new("ShaderNodeTexImage"); tex.name=name+" | 64px photo-derived PSX atlas"
+        tex.image=image; tex.interpolation="Closest"; tex.extension="REPEAT"
+        m.node_tree.links.new(uv.outputs["UV"],tex.inputs["Vector"])
+        m.node_tree.links.new(tex.outputs["Color"],shader.inputs["Base Color"])
+        return m
+
+    def mesh_obj(name, verts, faces, material, bevel=0):
+        mesh=bpy.data.meshes.new(name+" mesh"); mesh.from_pydata(verts,[],faces); mesh.materials.append(material); mesh.update()
+        obj=bpy.data.objects.new(name,mesh); scene.collection.objects.link(obj)
+        if bevel:
+            mod=obj.modifiers.new("Controlled low-poly edge chamfer","BEVEL"); mod.width=bevel; mod.segments=1
+            obj.modifiers.new("Weighted normals","WEIGHTED_NORMAL")
+        return obj
+
+    def box_mesh(name, center, size, material, bevel=0):
+        x,y,z=center; a,b,c=(v/2 for v in size)
+        verts=[(x-a,y-b,z-c),(x+a,y-b,z-c),(x+a,y+b,z-c),(x-a,y+b,z-c),
+               (x-a,y-b,z+c),(x+a,y-b,z+c),(x+a,y+b,z+c),(x-a,y+b,z+c)]
+        faces=[(0,3,2,1),(4,5,6,7),(0,1,5,4),(1,2,6,5),(2,3,7,6),(3,0,4,7)]
+        return mesh_obj(name,verts,faces,material,bevel)
 
     def tapered_limb(name, p1, p2, r1, r2, material, sides=7):
-        # Geometry is stored relative to its proximal endpoint so rotations pivot at the joint.
         a=Vector(p1); b=Vector(p2); axis=(b-a).normalized()
         helper=Vector((0,0,1)) if abs(axis.z)<0.92 else Vector((0,1,0))
         u=axis.cross(helper).normalized(); v=axis.cross(u).normalized()
@@ -409,40 +412,33 @@ me,verts,faces,material,bevel)
     warm=mat("Headlamp | amber glass",(0.9,0.42,0.12),0.15,0.22)
     moon_mat=mat("Moon | bone-white",(0.78,0.79,0.72),0.0,0.82)
 
-    set_job_status(stage="Building road, custom car and forest silhouettes",progress=12)
+    set_job_status(stage="Importing CC0 forest models and building textured road",progress=12)
     box_mesh("Roadbed | beveled shoulder",(0,0,-0.34),(8,62,0.48),soil)
     box_mesh("Asphalt ribbon",(0,0,-0.07),(6.5,62,0.18),road)
     for x in (-3.25,3.25):
         box_mesh("Broken road edge", (x,0,0.01),(0.18,62,0.12),metal)
-    # Distinctive trees: tapered trunks with irregular, tiered polygonal boughs.
+    # Populate the set with real imported CC0 low-poly tree models, not repeated cones.
+    tree_models=import_cc0_forest_pack(scene,photo_maps)
+    tree_index=0
     for side in (-1,1):
         for i in range(27):
             y=-28+i*2.1+random.uniform(-0.65,0.65)
             x=side*random.uniform(5.1,11.5)
-            h=random.uniform(5.5,9.5)
-            trunk=tapered_limb("Cedar trunk | faceted",(x,y,0),(x+random.uniform(-0.25,0.25),y,h*0.53),0.32,0.12,bark,7)
-            for tier in range(3):
-                z=h*(0.34+tier*0.19)
-                radius=h*(0.27-tier*0.055)
-                verts=[]
-                for zz,rr in ((z-radius*0.55,radius),(z+radius*0.75,0.06)):
-                    for k in range(7):
-                        ang=2*math.pi*k/7+(tier%2)*0.18
-                        verts.append((x+math.cos(ang)*rr,y+math.sin(ang)*rr,zz))
-                faces=[(k,(k+1)%7,7+(k+1)%7,7+k) for k in range(7)]+[tuple(range(6,-1,-1)),tuple(range(7,14))]
-                mesh_obj("Cedar bough tier | irregular low-poly",verts,faces,foliage)
-    # One broad trunk and layered boughs form the impact obstacle.
-    impact_x,impact_y=1.18,-1.8
-    tapered_limb("Impact cedar | scarred trunk",(impact_x,impact_y,0),(impact_x-0.08,impact_y,4.3),0.48,0.25,bark,8)
-    for tier in range(3):
-        z=2.9+tier*0.85; radius=2.15-tier*0.35
-        verts=[]
-        for zz,rr in ((z-radius*0.55,radius),(z+radius*0.8,0.08)):
-            for k in range(8):
-                ang=2*math.pi*k/8+tier*0.2
-                verts.append((impact_x+math.cos(ang)*rr,impact_y+math.sin(ang)*rr,zz))
-        faces=[(k,(k+1)%8,8+(k+1)%8,8+k) for k in range(8)]+[tuple(range(7,-1,-1)),tuple(range(8,16))]
-        mesh_obj("Impact cedar | sculpted canopy",verts,faces,foliage)
+            prototype=tree_models[tree_index%len(tree_models)]; tree_index+=1
+            tree=prototype if tree_index<=len(tree_models) else prototype.copy()
+            if tree is not prototype:
+                tree.data=prototype.data
+                scene.collection.objects.link(tree)
+            tree.name="Forest pine | imported CC0 low-poly model"
+            scale=random.uniform(0.78,1.22)
+            tree.scale=(scale,scale,scale)
+            tree.location=(x,y,0)
+            tree.rotation_euler[2]=random.uniform(-math.pi,math.pi)
+    impact_tree=tree_models[0].copy(); impact_tree.data=tree_models[0].data
+    scene.collection.objects.link(impact_tree)
+    impact_tree.name="Impact cedar | imported CC0 low-poly model"
+    impact_tree.scale=(1.35,1.35,1.35); impact_tree.location=(1.18,-1.8,0)
+    impact_tree.rotation_euler[2]=0.42
 
     # Vehicle is a single authored assembly parented to a moving root.
     car_root=bpy.data.objects.new("Car rig | vehicle root",None); scene.collection.objects.link(car_root)
