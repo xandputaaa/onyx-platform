@@ -1,4 +1,4 @@
-import bpy, json, os, threading, queue, subprocess, shutil, math, time
+import bpy, json, os, threading, queue, subprocess, shutil, math, time, urllib.request, tempfile, zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from mathutils import Vector, Matrix
@@ -117,6 +117,108 @@ def create_hoodie():
     return {"ok":True,"scene":"CELVANI oversized hoodie blockout","blend":"/outputs/celvani_hoodie_blockout.blend","render":"/outputs/celvani_hoodie_blockout.png","note":"Concept blockout only; not a manufacturing-accurate garment or approved logo."}
 
 
+
+def fetch_polyhaven_photo(asset_id, label):
+    """Fetch a real CC0 photographic diffuse map, reduce it to PSX texels, dither and pack it."""
+    api_url="https://api.polyhaven.com/files/"+asset_id
+    request=urllib.request.Request(api_url,headers={"User-Agent":"ORNI-Creative-Asset-Pipeline/1.0"})
+    with urllib.request.urlopen(request,timeout=35) as response:
+        tree=json.loads(response.read().decode("utf-8"))
+    candidates=[]
+    def walk(node,path=()):
+        if isinstance(node,dict):
+            if isinstance(node.get("url"),str):
+                p="/".join(path).lower()
+                candidates.append((p,node["url"]))
+            for key,value in node.items(): walk(value,path+(str(key),))
+        elif isinstance(node,list):
+            for index,value in enumerate(node): walk(value,path+(str(index),))
+    walk(tree)
+    def score(item):
+        p,url=item
+        return (100 if "1k" in p else 60 if "2k" in p else 10,
+                50 if "jpg" in p or url.lower().endswith(".jpg") else 0,
+                40 if "diff" in p or "color" in p or "albedo" in p else 0)
+    jpg=[item for item in candidates if "jpg" in item[0] or ".jpg" in item[1].lower()]
+    diffuse=[item for item in jpg if any(token in item[0] for token in ("diff","color","albedo"))]
+    pool=diffuse or jpg
+    if not pool:
+        raise RuntimeError("Poly Haven returned no JPG diffuse map for "+asset_id)
+    source_url=sorted(pool,key=score,reverse=True)[0][1]
+    req=urllib.request.Request(source_url,headers={"User-Agent":"ORNI-Creative-Asset-Pipeline/1.0"})
+    with urllib.request.urlopen(req,timeout=60) as response: image_bytes=response.read()
+    fd,temp_path=tempfile.mkstemp(prefix="orni-photo-",suffix=".jpg")
+    os.close(fd)
+    try:
+        with open(temp_path,"wb") as handle: handle.write(image_bytes)
+        image=bpy.data.images.load(temp_path,check_existing=False)
+        image.name=label+" | real photographic source"
+        image.scale(64,64)
+        px=list(image.pixels[:])
+        bayer=((0,8,2,10),(12,4,14,6),(3,11,1,9),(15,7,13,5))
+        for y in range(64):
+            for x in range(64):
+                threshold=(bayer[y%4][x%4]/16.0)-0.46875
+                i=(y*64+x)*4
+                for channel in range(3):
+                    value=max(0.0,min(1.0,px[i+channel]))
+                    px[i+channel]=max(0.0,min(1.0,(math.floor(value*31.0+threshold+0.5))/31.0))
+        image.pixels.foreach_set(px)
+        image.pack()
+        return image
+    finally:
+        try: os.unlink(temp_path)
+        except OSError: pass
+
+
+def import_oga_psx_vehicle(car_root):
+    """Import a CC0 PSX car from OpenGameArt when the free source pack is reachable."""
+    url="https://opengameart.org/sites/default/files/psx_style_cars_by_ggbot_august2023.zip"
+    cache=Path("/tmp/orni_psx_style_cars.zip")
+    if not cache.exists() or cache.stat().st_size<10000:
+        req=urllib.request.Request(url,headers={"User-Agent":"ORNI-Creative-Asset-Pipeline/1.0"})
+        with urllib.request.urlopen(req,timeout=60) as response: data=response.read()
+        cache.write_bytes(data)
+    extract=Path("/tmp/orni_psx_style_cars")
+    if not extract.exists():
+        extract.mkdir(parents=True,exist_ok=True)
+        with zipfile.ZipFile(cache) as archive: archive.extractall(extract)
+    blend_files=sorted(extract.rglob("*.blend"))
+    if not blend_files:
+        return None
+    chosen=next((p for p in blend_files if any(k in p.stem.lower() for k in ("car1","car_1","car-1","vehicle1","vehicle_1"))),blend_files[0])
+    with bpy.data.libraries.load(str(chosen),link=False) as (source,target):
+        names=list(source.objects)
+        target.objects=names
+    imported=[obj for obj in target.objects if obj and obj.type=="MESH"]
+    if not imported:
+        return None
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in imported: obj.select_set(True)
+    bpy.context.view_layer.objects.active=imported[0]
+    bpy.ops.object.join()
+    vehicle=bpy.context.object
+    vehicle.name="Imported CC0 PSX vehicle | GGBotNet"
+    bpy.ops.object.transform_apply(location=True,rotation=True,scale=True)
+    dims=vehicle.dimensions
+    if dims.x>dims.y:
+        vehicle.rotation_euler[2]=math.radians(90)
+        bpy.ops.object.transform_apply(location=False,rotation=True,scale=False)
+    dims=vehicle.dimensions
+    factor=min(2.35/max(dims.x,0.001),4.25/max(dims.y,0.001),1.8/max(dims.z,0.001))
+    vehicle.scale=(factor,factor,factor)
+    bpy.ops.object.transform_apply(location=False,rotation=False,scale=True)
+    corners=[Vector(corner) for corner in vehicle.bound_box]
+    min_x=min(v.x for v in corners); max_x=max(v.x for v in corners)
+    min_y=min(v.y for v in corners); max_y=max(v.y for v in corners)
+    min_z=min(v.z for v in corners)
+    vehicle.location.x=-(min_x+max_x)/2
+    vehicle.location.y=-(min_y+max_y)/2
+    vehicle.location.z=-min_z
+    vehicle.parent=car_root
+    vehicle.matrix_parent_inverse=Matrix.Identity(4)
+    return vehicle
+
 def create_crash_woods_cinema():
     """Rebuilt PS1/PS2 crash-woods short with authored geometry, grunge maps and edited shots."""
     import random
@@ -124,30 +226,28 @@ def create_crash_woods_cinema():
     clear_scene()
     scene=bpy.context.scene
     set_compatible_eevee(scene)
-    scene.render.resolution_x=320; scene.render.resolution_y=180
+    scene.render.resolution_x=180; scene.render.resolution_y=320
     scene.render.resolution_percentage=100; scene.render.fps=12
     scene.frame_start=1; scene.frame_end=180
-    scene.world.color=(0.008,0.012,0.026)
+    scene.world.color=(0.004,0.008,0.018)
     scene.view_settings.view_transform="Standard"
     scene.view_settings.look="Medium High Contrast"
     if hasattr(scene.view_settings,"dither_intensity"): scene.view_settings.dither_intensity=0.35
     random.seed(27)
 
-    def textured_mat(name, base, rough=0.9, seed=1, metallic=0.0):
+    photo_maps={}
+    for asset_id,label in (("asphalt_01","Road asphalt"),("pine_bark","Tree bark"),("forest_ground_04","Forest floor and foliage")):
+        try:
+            photo_maps[label]=fetch_polyhaven_photo(asset_id,label)
+        except Exception as exc:
+            raise RuntimeError("Required CC0 photographic texture download failed for "+asset_id+": "+str(exc))
+    def textured_mat(name, base, rough=0.9, seed=1, metallic=0.0, photo=None):
         m=mat(name,base,metallic,rough)
-        image=bpy.data.images.new(name+" | authored 64px grunge",width=64,height=64,alpha=False)
-        pixels=[]
-        for y in range(64):
-            for x in range(64):
-                n=((x*37+y*19+seed*53+(x*y*7))%31)/100.0
-                grain=0.78+n
-                seam=0.58 if ((x+seed*3)%17 in (0,1) or (y+seed)%23==0) else 1.0
-                fleck=1.22 if ((x*13+y*29+seed)%47)<3 else 1.0
-                shade=max(0.25,min(1.35,grain*seam*fleck))
-                pixels.extend((min(1,base[0]*shade),min(1,base[1]*shade),min(1,base[2]*shade),1))
-        image.pixels.foreach_set(pixels); image.pack()
+        image=photo_maps.get(photo) if photo else None
+        if image is None:
+            raise RuntimeError("No photographic PSX texture assigned to major material: "+name)
         nodes=m.node_tree.nodes; shader=nodes.get("Principled BSDF")
-        tex=nodes.new("ShaderNodeTexImage"); tex.name=name+" | pixel-grain atlas"
+        tex=nodes.new("ShaderNodeTexImage"); tex.name=name+" | 64px photo-derived PSX atlas"
         tex.image=image; tex.interpolation="Closest"; tex.extension="REPEAT"
         m.node_tree.links.new(tex.outputs["Color"],shader.inputs["Base Color"])
         return m
@@ -189,18 +289,18 @@ def create_crash_woods_cinema():
         obj.matrix_parent_inverse=Matrix.Identity(4)
         return obj
 
-    road=textured_mat("Wet asphalt | charcoal tar, cracks and grit",(0.035,0.045,0.06),0.98,4)
-    soil=textured_mat("Forest loam | leaf litter and mud",(0.07,0.085,0.055),1,7)
-    bark=textured_mat("Bark | rough striped cedar",(0.20,0.105,0.055),1,11)
-    foliage=textured_mat("Pine | mottled midnight needles",(0.035,0.12,0.075),1,14)
-    paint=textured_mat("Car paint | oxidized burgundy enamel",(0.34,0.055,0.045),0.72,18,0.12)
-    glass=textured_mat("Glass | smoky blue reflections",(0.035,0.12,0.17),0.3,22,0.25)
-    tire=textured_mat("Tire rubber | dusty tread",(0.018,0.022,0.027),1,24)
-    dummy_mat=textured_mat("Crash dummy | aged ivory composite",(0.72,0.69,0.58),0.82,29)
-    joint_mat=textured_mat("Crash dummy | graphite joints",(0.09,0.105,0.12),0.75,32,0.1)
-    metal=textured_mat("Road hardware | rusted steel",(0.16,0.18,0.19),0.7,35,0.45)
-    warm=textured_mat("Headlamp | amber glass",(0.9,0.58,0.24),0.28,39)
-    moon_mat=textured_mat("Moon | grainy bone-white",(0.78,0.79,0.72),0.8,43)
+    road=textured_mat("Wet asphalt | photographed road grit",(0.035,0.045,0.06),0.98,4,photo="Road asphalt")
+    soil=textured_mat("Forest loam | photographed leaf litter",(0.07,0.085,0.055),1,7,photo="Forest floor and foliage")
+    bark=textured_mat("Bark | photographed pine bark",(0.20,0.105,0.055),1,11,photo="Tree bark")
+    foliage=textured_mat("Pine | photographic forest ground atlas",(0.035,0.12,0.075),1,14,photo="Forest floor and foliage")
+    paint=mat("Car paint | deep oxblood lacquer",(0.25,0.025,0.035),0.22,0.28)
+    glass=mat("Glass | smoked blue reflections",(0.025,0.09,0.13),0.45,0.16)
+    tire=mat("Tire rubber | charcoal",(0.018,0.022,0.027),0.0,0.92)
+    dummy_mat=mat("Crash dummy | aged ivory composite",(0.62,0.58,0.48),0.08,0.48)
+    joint_mat=mat("Crash dummy | graphite joints",(0.035,0.045,0.055),0.32,0.42)
+    metal=mat("Road hardware | weathered steel",(0.12,0.14,0.16),0.55,0.42)
+    warm=mat("Headlamp | amber glass",(0.9,0.42,0.12),0.15,0.22)
+    moon_mat=mat("Moon | bone-white",(0.78,0.79,0.72),0.0,0.82)
 
     set_job_status(stage="Building road, custom car and forest silhouettes",progress=12)
     box_mesh("Roadbed | beveled shoulder",(0,0,-0.34),(8,62,0.48),soil)
@@ -272,6 +372,14 @@ def create_crash_woods_cinema():
     for i in range(5):
         x=-0.55+i*0.27
         car_part(tapered_limb("Hood crease | impact damage",(x,-1.95,1.34),(x+0.12,-0.95,1.37),0.018,0.012,metal,4))
+    external_vehicle=None
+    try:
+        external_vehicle=import_oga_psx_vehicle(car_root)
+    except Exception as exc:
+        raise RuntimeError("CC0 PSX vehicle asset import failed: "+str(exc))
+    if external_vehicle:
+        for part in car_parts: part.hide_render=True; part.hide_viewport=True
+        external_vehicle.name="GGBotNet CC0 PSX car | main hero vehicle"
     car_root.location=(0,-13,0); car_root.keyframe_insert(data_path="location",frame=1)
     car_root.location=(0,0,0); car_root.keyframe_insert(data_path="location",frame=27)
     car_root.location=(0,0.65,0); car_root.keyframe_insert(data_path="location",frame=34)
@@ -338,6 +446,19 @@ def create_crash_woods_cinema():
             foot.rotation_euler[1]=0.10*math.sin(t+math.pi)
             foot.keyframe_insert(data_path="rotation_euler",frame=frame)
 
+    # A subtle EEVEE volumetric haze gives depth without washing out the foreground.
+    fog_mesh=bpy.data.meshes.new("Atmospheric fog bounds mesh")
+    fog_obj=bpy.data.objects.new("Atmospheric fog | low-density forest volume",fog_mesh); scene.collection.objects.link(fog_obj)
+    fog_verts=[(-22,-32,-1),(22,-32,-1),(22,32,-1),(-22,32,-1),(-22,-32,25),(22,-32,25),(22,32,25),(-22,32,25)]
+    fog_faces=[(0,3,2,1),(4,5,6,7),(0,1,5,4),(1,2,6,5),(2,3,7,6),(3,0,4,7)]
+    fog_mesh.from_pydata(fog_verts,[],fog_faces)
+    fog_mat=bpy.data.materials.new("Atmosphere | cool forest fog"); fog_mat.use_nodes=True
+    fog_nodes=fog_mat.node_tree.nodes; fog_nodes.clear()
+    fog_out=fog_nodes.new("ShaderNodeOutputMaterial"); fog_vol=fog_nodes.new("ShaderNodeVolumePrincipled")
+    fog_vol.inputs["Color"].default_value=(0.12,0.18,0.27,1)
+    fog_vol.inputs["Density"].default_value=0.012
+    fog_mat.node_tree.links.new(fog_vol.outputs["Volume"],fog_out.inputs["Volume"])
+    fog_obj.data.materials.append(fog_mat)
     # Moon, roadside debris, power pole and wires add authored environmental scale cues.
     bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2,radius=2.1,location=(-1,16,17))
     moon=bpy.context.object; moon.name="Moon | low-poly cutscene reveal"; moon.data.materials.append(moon_mat)
@@ -355,22 +476,24 @@ def create_crash_woods_cinema():
     bpy.ops.object.light_add(type="AREA",location=(0,-3,3.0))
     key=bpy.context.object; key.name="Amber headlamp bounce"; key.data.energy=120; key.data.shape="DISK"; key.data.size=4
     key.data.color=(1.0,0.54,0.28); key.rotation_euler=(math.radians(24),0,0)
-    bpy.ops.object.camera_add(location=(8,-18,5))
-    cam=bpy.context.object; cam.name="ORNI edited PS2 camera"; scene.camera=cam; cam.data.lens=48
+    bpy.ops.object.camera_add(location=(0,-25,6))
+    cam=bpy.context.object; cam.name="ORNI locked 9:16 PS2 cutscene camera"; scene.camera=cam; cam.data.lens=52
+    cam.data.dof.use_dof=True; cam.data.dof.aperture_fstop=5.6
     def camera_shot(frame, location, target):
         cam.location=location
         cam.rotation_euler=(Vector(target)-cam.location).to_track_quat("-Z","Y").to_euler()
         cam.keyframe_insert(data_path="location",frame=frame)
         cam.keyframe_insert(data_path="rotation_euler",frame=frame)
-    # Four deliberate editorial shots: establish/impact, wreck/exit, walk, moon hold.
-    camera_shot(1,(8,-18,5),(0,-8,1))
-    camera_shot(34,(6,-10,3.2),(0,-4.4,1.2))
-    camera_shot(35,(5,-9.5,3.1),(0,-4.3,1.2))
-    camera_shot(68,(4.8,-7.4,2.8),(1.3,-3.8,1.2))
-    camera_shot(69,(8,-2,3.8),(2.4,-2.7,1.2))
-    camera_shot(145,(10,5,4.4),(4.2,4.2,1.3))
-    camera_shot(146,(7,7,4.5),(3.5,4,1))
-    camera_shot(180,(0,12,7),(-1,16,17))
+    # Four composed vertical shots: tracking approach, impact/exit, over-shoulder walk, moon reveal.
+    camera_shot(1,(0,-25,6),(0,-13,1.25))
+    camera_shot(27,(0,-12,5.4),(0,-1.2,1.25))
+    camera_shot(33,(0,-10.5,5.2),(0,0.0,1.25))
+    camera_shot(34,(0,-9.0,5.1),(0,-0.3,1.2))
+    camera_shot(68,(0,-7.5,4.8),(1.1,-2.2,1.2))
+    camera_shot(69,(0,-3.5,5.2),(2.4,-2.7,1.2))
+    camera_shot(145,(0,2.5,5.6),(4.2,4.2,1.3))
+    camera_shot(146,(0,10,8),(-1,16,17))
+    camera_shot(180,(0,10,8),(-1,16,17))
     for obj in scene.objects:
         if obj.animation_data and obj.animation_data.action:
             for fc in obj.animation_data.action.fcurves:
@@ -403,13 +526,13 @@ def create_crash_woods_cinema():
     probe=subprocess.run(["ffprobe","-v","error","-select_streams","v:0","-show_entries","stream=width,height,r_frame_rate","-show_entries","format=duration","-of","json",str(video_file)],check=True,capture_output=True,text=True,timeout=30)
     probe_data=json.loads(probe.stdout); stream=(probe_data.get("streams") or [{}])[0]
     duration=float((probe_data.get("format") or {}).get("duration",0))
-    if (stream.get("width"),stream.get("height"))!=(960,540): raise RuntimeError("MP4 dimensions failed validation.")
+    if (stream.get("width"),stream.get("height"))!=(540,960): raise RuntimeError("MP4 dimensions failed validation.")
     if stream.get("r_frame_rate")!="12/1" or not 14.5<=duration<=15.5: raise RuntimeError("MP4 frame rate or duration failed validation.")
     subprocess.run(["ffmpeg","-v","error","-i",str(video_file),"-f","null","-"],check=True,capture_output=True,text=True,timeout=180)
     set_job_status(stage="Validating deliverables",progress=98)
     if not (OUT/"orni_crash_woods.blend").is_file() or not (OUT/"orni_crash_woods_preview.png").is_file():
         raise RuntimeError("Required Blender project or style-frame preview is missing.")
-    return {"ok":True,"scene":"ORNI rebuilt PS1/PS2 crash-woods short","style":"authored-psx-cutscene","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"resolutionX":960,"resolutionY":540,"sourceResolution":"320x180","aspectRatio":"16:9","uvMappedMeshes":uv_mesh_count,"textureResolution":"64x64 authored grunge maps with nearest-neighbour sampling","cameraShots":4,"decodeValidated":True,"note":"Custom vehicle/forest geometry, authored low-resolution grunge maps, articulated crash dummy, staged door exit and four-shot camera edit. Technical validation is not human playback approval."}
+    return {"ok":True,"scene":"ORNI rebuilt PS1/PS2 crash-woods short","style":"authored-psx-cutscene","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"resolutionX":540,"resolutionY":960,"sourceResolution":"180x320","aspectRatio":"9:16","uvMappedMeshes":uv_mesh_count,"textureResolution":"64x64 photo-derived CC0 maps with 5-bit Bayer dithering and nearest-neighbour sampling","cameraShots":4,"externalVehicleAsset":"OpenGameArt PSX Style Cars by GGBotNet (CC0)","textureSources":["Poly Haven Asphalt 01","Poly Haven Pine Bark","Poly Haven Forest Ground 04"],"assetAttribution":"Powered by Poly Haven API; CC0 assets. Vehicle: GGBotNet/OpenGameArt CC0.","decodeValidated":True,"note":"Custom vehicle/forest geometry, authored low-resolution grunge maps, articulated crash dummy, staged door exit and four-shot camera edit. Technical validation is not human playback approval."}
 
 def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""):
     if style == "crash-woods": return create_crash_woods_cinema()
