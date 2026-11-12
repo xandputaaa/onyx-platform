@@ -84,7 +84,6 @@ async function orniForward(req, res, route, method = "GET") {
 app.get("/api/orni/reference-cinema", (req, res) => orniForward(req, res, "/api/orni/reference-cinema"));
 app.post("/api/orni/blender/scene/retro-cinema", (req,res) => orniForward(req,res,"/api/orni/blender/scene/retro-cinema","POST"));
 
-let crashWoodsTriggerUsed=false;
 app.post("/api/orni/internal/poll-crash-woods", async (req,res) => {
   const supplied=String(req.query?.key||"");
   const expected=process.env.ORNI_BUILD_TRIGGER_TOKEN||"";
@@ -108,10 +107,15 @@ app.post("/api/orni/internal/trigger-crash-woods", async (req,res) => {
   const supplied=String(req.query?.key||"");
   const expected=process.env.ORNI_BUILD_TRIGGER_TOKEN||"";
   if(!expected||supplied.length!==expected.length||supplied!==expected) return res.status(404).json({error:"Not found"});
-  if(crashWoodsTriggerUsed) return res.status(409).json({error:"This one-time production trigger has already been used."});
-  crashWoodsTriggerUsed=true;
   if(!process.env.ORNI_ACCESS_TOKEN) return res.status(503).json({error:"ORNI authentication is not configured."});
   try{
+    const statusResponse=await fetch(`${orniBase}/api/orni/blender/job-status`,{
+      headers:{"Authorization":"Bearer "+process.env.ORNI_ACCESS_TOKEN},
+      signal:AbortSignal.timeout(8000)
+    });
+    if(!statusResponse.ok) return res.status(502).json({error:"Could not verify whether the Blender worker is idle."});
+    const current=await statusResponse.json();
+    if(["queued","running"].includes(current.status)) return res.status(409).json({error:"A Blender job is already running.",status:current});
     const upstream=await fetch(`${orniBase}/api/orni/blender/scene/retro-cinema`,{
       method:"POST",
       headers:{"Authorization":"Bearer "+process.env.ORNI_ACCESS_TOKEN,"Content-Type":"application/json"},
