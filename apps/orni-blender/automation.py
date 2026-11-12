@@ -193,6 +193,8 @@ def import_oga_psx_vehicle(car_root):
     imported=[obj for obj in target.objects if obj and obj.type=="MESH"]
     if not imported:
         return None
+    for obj in imported:
+        bpy.context.scene.collection.objects.link(obj)
     bpy.ops.object.select_all(action="DESELECT")
     for obj in imported: obj.select_set(True)
     bpy.context.view_layer.objects.active=imported[0]
@@ -420,9 +422,8 @@ def create_crash_woods_cinema():
     door_hinge.rotation_euler[2]=0; door_hinge.keyframe_insert(data_path="rotation_euler",frame=34)
     door_hinge.rotation_euler[2]=math.radians(-68); door_hinge.keyframe_insert(data_path="rotation_euler",frame=43)
     door_hinge.rotation_euler[2]=math.radians(-68); door_hinge.keyframe_insert(data_path="rotation_euler",frame=68)
-    if external_vehicle:
-        door.hide_render=True
-        door_hinge.hide_render=True
+    door.hide_render=True
+    door_hinge.hide_render=True
 
     # Dummy remains in the moving cabin through impact, then exits and walks away.
     dummy_root.location=(0,-18.25,0); dummy_root.keyframe_insert(data_path="location",frame=1)
@@ -490,7 +491,7 @@ def create_crash_woods_cinema():
     # Four composed vertical shots: tracking approach, impact/exit, over-shoulder walk, moon reveal.
     camera_shot(1,(0,-25,6),(0,-13,1.25))
     camera_shot(27,(0,-12,5.4),(0,-1.2,1.25))
-    camera_shot(33,(0,-10.5,5.2),(0,0.0,1.25))
+    camera_shot(33,(0,-12,5.4),(0,-1.2,1.25))
     camera_shot(34,(0,-9.0,5.1),(0,-0.3,1.2))
     camera_shot(68,(0,-7.5,4.8),(1.1,-2.2,1.2))
     camera_shot(69,(0,-3.5,5.2),(2.4,-2.7,1.2))
@@ -519,7 +520,7 @@ def create_crash_woods_cinema():
         if obj.animation_data and obj.animation_data.action:
             for fc in obj.animation_data.action.fcurves:
                 for kp in fc.keyframe_points:
-                    kp.interpolation="CONSTANT" if obj==cam else "LINEAR"
+                    kp.interpolation=("LINEAR" if int(round(kp.co.x)) in (1,34,69,146) else "CONSTANT") if obj==cam else "LINEAR"
     # UV unwrap all scene meshes and apply packed pixel-grain maps with nearest sampling.
     set_job_status(stage="UV unwrapping and texture validation",progress=32)
     uv_mesh_count=unwrap_scene_meshes()
