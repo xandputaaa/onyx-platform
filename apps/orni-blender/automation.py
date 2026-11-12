@@ -642,11 +642,31 @@ def create_crash_woods_cinema():
             projected=world_to_camera_view(scene,cam,target)
             if not (0.025<=projected.x<=0.975 and 0.025<=projected.y<=0.975 and projected.z>0):
                 raise RuntimeError("Intermediate camera framing failed at frame "+str(sample_frame)+": "+str((round(projected.x,3),round(projected.y,3),round(projected.z,3))))
+            # Test the actual camera near-plane footprint, not an arbitrary 16cm center-ray bubble.
+            # The previous 0.16m ray falsely rejected trees that were close to, but safely beyond,
+            # the 0.10m camera clip plane. Sample center + four near-plane corners against geometry.
             camera_origin=cam.matrix_world.translation
-            forward=cam.matrix_world.to_quaternion() @ Vector((0,0,-1))
-            hit,hit_location,_,_,hit_obj,_=scene.ray_cast(depsgraph,camera_origin,forward,distance=0.16)
-            if hit and hit_obj and "fog" not in hit_obj.name.lower():
-                raise RuntimeError("Camera near-plane obstruction at frame "+str(sample_frame)+" by "+hit_obj.name)
+            near_clip=max(float(cam.data.clip_start),0.01)
+            local_frame=cam.data.view_frame(scene=scene)
+            near_samples=[Vector((0.0,0.0,-near_clip))]
+            for corner in local_frame:
+                direction=Vector((corner.x,corner.y,corner.z))
+                if direction.length>0:
+                    near_samples.append(direction.normalized()*near_clip)
+            obstruction=None
+            for near_point in near_samples:
+                direction=(cam.matrix_world.to_3x3() @ near_point).normalized()
+                hit,hit_location,_,_,hit_obj,_=scene.ray_cast(
+                    depsgraph,camera_origin,direction,distance=near_clip*1.02
+                )
+                if hit and hit_obj and "fog" not in hit_obj.name.lower():
+                    obstruction=hit_obj
+                    break
+            if obstruction:
+                raise RuntimeError(
+                    "Camera near-plane obstruction at frame "+str(sample_frame)+
+                    " by "+obstruction.name+" (within "+str(round(near_clip,3))+"m clip plane)"
+                )
     scene["ORNI_Camera_Frames_Validated"]=True
     scene["ORNI_Camera_Validation_Report"]=json.dumps(camera_report)
     scene["ORNI_Texture_Provenance"]="Poly Haven CC0 photographic diffuse maps; 64px; 5-bit/channel Bayer dither; nearest-neighbour"
