@@ -305,7 +305,7 @@ document.getElementById("researchBtn").addEventListener("click",async()=>{
     const r=await fetch("/api/orni/research",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query})});
     const body=await r.json();if(!r.ok)throw new Error(body.detail||body.error||"Research failed.");
     const sources=body.research?.results||[];
-    out.textContent=sources.length?sources.map((item,i)=>(i+1)+". "+item.title+"\\n"+item.url+"\\n"+(item.snippet||"No search snippet.")+(item.sourceText?"\\nSource extract: "+item.sourceText:"")).join("\\n\\n"):"No readable results returned. Try a more specific query.";
+    out.textContent=sources.length?sources.map((item,i)=>(i+1)+". "+item.title+"\n"+item.url+"\n"+(item.snippet||"No search snippet.")+(item.sourceText?"\nSource extract: "+item.sourceText:"")).join("\n\n"):"No readable results returned. Try a more specific query.";
     out.style.display="block";
   }catch(error){out.textContent=error.message;out.style.display="block";}
   finally{button.disabled=false;button.textContent="Research the web";}
