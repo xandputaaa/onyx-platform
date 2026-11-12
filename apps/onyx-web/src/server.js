@@ -85,7 +85,7 @@ app.get("/api/orni/reference-cinema", (req, res) => orniForward(req, res, "/api/
 app.post("/api/orni/blender/scene/retro-cinema", (req,res) => orniForward(req,res,"/api/orni/blender/scene/retro-cinema","POST"));
 
 let crashWoodsTriggerUsed=false;
-app.get("/api/orni/internal/trigger-crash-woods", async (req,res) => {
+app.post("/api/orni/internal/trigger-crash-woods", async (req,res) => {
   const supplied=String(req.query?.key||"");
   const expected=process.env.ORNI_BUILD_TRIGGER_TOKEN||"";
   if(!expected||supplied.length!==expected.length||supplied!==expected) return res.status(404).json({error:"Not found"});
