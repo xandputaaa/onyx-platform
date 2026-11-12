@@ -420,6 +420,9 @@ def create_crash_woods_cinema():
     door_hinge.rotation_euler[2]=0; door_hinge.keyframe_insert(data_path="rotation_euler",frame=34)
     door_hinge.rotation_euler[2]=math.radians(-68); door_hinge.keyframe_insert(data_path="rotation_euler",frame=43)
     door_hinge.rotation_euler[2]=math.radians(-68); door_hinge.keyframe_insert(data_path="rotation_euler",frame=68)
+    if external_vehicle:
+        door.hide_render=True
+        door_hinge.hide_render=True
 
     # Dummy remains in the moving cabin through impact, then exits and walks away.
     dummy_root.location=(0,-18.25,0); dummy_root.keyframe_insert(data_path="location",frame=1)
@@ -477,8 +480,8 @@ def create_crash_woods_cinema():
     key=bpy.context.object; key.name="Amber headlamp bounce"; key.data.energy=120; key.data.shape="DISK"; key.data.size=4
     key.data.color=(1.0,0.54,0.28); key.rotation_euler=(math.radians(24),0,0)
     bpy.ops.object.camera_add(location=(0,-25,6))
-    cam=bpy.context.object; cam.name="ORNI locked 9:16 PS2 cutscene camera"; scene.camera=cam; cam.data.lens=52
-    cam.data.dof.use_dof=True; cam.data.dof.aperture_fstop=5.6
+    cam=bpy.context.object; cam.name="ORNI locked 9:16 PS2 cutscene camera"; scene.camera=cam; cam.data.lens=52; cam.data.clip_start=0.1; cam.data.clip_end=250
+    cam.data.dof.use_dof=False; cam.data.dof.aperture_fstop=5.6
     def camera_shot(frame, location, target):
         cam.location=location
         cam.rotation_euler=(Vector(target)-cam.location).to_track_quat("-Z","Y").to_euler()
@@ -494,6 +497,24 @@ def create_crash_woods_cinema():
     camera_shot(145,(0,2.5,5.6),(4.2,4.2,1.3))
     camera_shot(146,(0,10,8),(-1,16,17))
     camera_shot(180,(0,10,8),(-1,16,17))
+    # Camera gate: sample every authored cut/track key and reject out-of-frame targets.
+    from bpy_extras.object_utils import world_to_camera_view
+    framing_targets=[
+        (1,(0,-13,1.25)),(27,(0,-1.2,1.25)),(33,(0,0,1.25)),
+        (34,(0,-0.3,1.2)),(68,(1.1,-2.2,1.2)),(69,(2.4,-2.7,1.2)),
+        (145,(4.2,4.2,1.3)),(146,(-1,16,17)),(180,(-1,16,17))
+    ]
+    camera_report=[]
+    for sample_frame,target in framing_targets:
+        scene.frame_set(sample_frame)
+        bpy.context.view_layer.update()
+        projected=world_to_camera_view(scene,cam,Vector(target))
+        inside=(0.06<=projected.x<=0.94 and 0.06<=projected.y<=0.94 and projected.z>0)
+        camera_report.append({"frame":sample_frame,"x":round(projected.x,3),"y":round(projected.y,3),"depth":round(projected.z,3),"inside":inside})
+        if not inside:
+            raise RuntimeError("Camera framing validation failed at frame "+str(sample_frame)+": "+str(camera_report[-1]))
+    scene["ORNI_Camera_Frames_Validated"]=True
+    scene["ORNI_Camera_Validation_Report"]=json.dumps(camera_report)
     for obj in scene.objects:
         if obj.animation_data and obj.animation_data.action:
             for fc in obj.animation_data.action.fcurves:
