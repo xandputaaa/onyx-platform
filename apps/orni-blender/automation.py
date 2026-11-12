@@ -242,7 +242,7 @@ def create_crash_woods_cinema():
     random.seed(27)
 
     photo_maps={}
-    for asset_id,label in (("asphalt_01","Road asphalt"),("pine_bark","Tree bark"),("forest_ground_04","Forest floor and foliage")):
+    for asset_id,label in (("asphalt_01","Road asphalt"),("pine_bark","Tree bark"),("forest_ground_04","Forest floor and foliage"),("rusty_painted_metal","Weathered car paint"),("polystyrene","Crash dummy composite"),("rubber_tiles","Tire rubber"),("metal_plate","Road hardware")):
         try:
             photo_maps[label]=fetch_polyhaven_photo(asset_id,label)
         except Exception as exc:
@@ -299,12 +299,12 @@ def create_crash_woods_cinema():
     soil=textured_mat("Forest loam | photographed leaf litter",(0.07,0.085,0.055),1,7,photo="Forest floor and foliage")
     bark=textured_mat("Bark | photographed pine bark",(0.20,0.105,0.055),1,11,photo="Tree bark")
     foliage=textured_mat("Pine | photographic forest ground atlas",(0.035,0.12,0.075),1,14,photo="Forest floor and foliage")
-    paint=mat("Car paint | deep oxblood lacquer",(0.25,0.025,0.035),0.22,0.28)
+    paint=textured_mat("Car paint | photographed weathered red enamel",(0.25,0.025,0.035),0.68,18,0.12,photo="Weathered car paint")
     glass=mat("Glass | smoked blue reflections",(0.025,0.09,0.13),0.45,0.16)
-    tire=mat("Tire rubber | charcoal",(0.018,0.022,0.027),0.0,0.92)
-    dummy_mat=mat("Crash dummy | aged ivory composite",(0.62,0.58,0.48),0.08,0.48)
+    tire=textured_mat("Tire rubber | photographed worn rubber",(0.018,0.022,0.027),0.92,24,photo="Tire rubber")
+    dummy_mat=textured_mat("Crash dummy | scratched polystyrene composite",(0.62,0.58,0.48),0.72,29,photo="Crash dummy composite")
     joint_mat=mat("Crash dummy | graphite joints",(0.035,0.045,0.055),0.32,0.42)
-    metal=mat("Road hardware | weathered steel",(0.12,0.14,0.16),0.55,0.42)
+    metal=textured_mat("Road hardware | photographed worn metal",(0.12,0.14,0.16),0.72,35,0.45,photo="Road hardware")
     warm=mat("Headlamp | amber glass",(0.9,0.42,0.12),0.15,0.22)
     moon_mat=mat("Moon | bone-white",(0.78,0.79,0.72),0.0,0.82)
 
@@ -558,7 +558,7 @@ def create_crash_woods_cinema():
     set_job_status(stage="Validating deliverables",progress=98)
     if not (OUT/"orni_crash_woods.blend").is_file() or not (OUT/"orni_crash_woods_preview.png").is_file():
         raise RuntimeError("Required Blender project or style-frame preview is missing.")
-    return {"ok":True,"scene":"ORNI rebuilt PS1/PS2 crash-woods short","style":"authored-psx-cutscene","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"resolutionX":540,"resolutionY":960,"sourceResolution":"180x320","aspectRatio":"9:16","uvMappedMeshes":uv_mesh_count,"textureResolution":"64x64 photo-derived CC0 maps with 5-bit Bayer dithering and nearest-neighbour sampling","cameraShots":4,"externalVehicleAsset":"OpenGameArt PSX Style Cars by GGBotNet (CC0)","textureSources":["Poly Haven Asphalt 01","Poly Haven Pine Bark","Poly Haven Forest Ground 04"],"assetAttribution":"Powered by Poly Haven API; CC0 assets. Vehicle: GGBotNet/OpenGameArt CC0.","decodeValidated":True,"note":"Custom vehicle/forest geometry, authored low-resolution grunge maps, articulated crash dummy, staged door exit and four-shot camera edit. Technical validation is not human playback approval."}
+    return {"ok":True,"scene":"ORNI rebuilt PS1/PS2 crash-woods short","style":"authored-psx-cutscene","blend":"/outputs/orni_crash_woods.blend","preview":"/outputs/orni_crash_woods_preview.png","video":"/outputs/orni_crash_woods_15s.mp4","frames":180,"fps":12,"durationSeconds":15,"resolutionX":540,"resolutionY":960,"sourceResolution":"180x320","aspectRatio":"9:16","uvMappedMeshes":uv_mesh_count,"textureResolution":"64x64 photo-derived CC0 maps with 5-bit Bayer dithering and nearest-neighbour sampling","cameraShots":4,"externalVehicleAsset":"OpenGameArt PSX Style Cars by GGBotNet (CC0)","textureSources":["Poly Haven Asphalt 01","Poly Haven Pine Bark","Poly Haven Forest Ground 04","Poly Haven Rusty Painted Metal","Poly Haven Polystyrene","Poly Haven Rubber Tiles","Poly Haven Metal Plate"],"assetAttribution":"Powered by Poly Haven API; CC0 assets. Vehicle: GGBotNet/OpenGameArt CC0.","decodeValidated":True,"note":"Custom vehicle/forest geometry, authored low-resolution grunge maps, articulated crash dummy, staged door exit and four-shot camera edit. Technical validation is not human playback approval."}
 
 def create_retro_cinema(style="ps1", duration=5, aspect_ratio="16:9", caption=""):
     if style == "crash-woods": return create_crash_woods_cinema()
