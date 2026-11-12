@@ -46,7 +46,7 @@ async function runOrniWebResearch(rawQuery) {
   if(!query) throw new Error("A research query is required.");
   const response=await fetch("https://html.duckduckgo.com/html/?q="+encodeURIComponent(query),{
     headers:{"User-Agent":"Mozilla/5.0 (compatible; ORNIResearch/1.0)","Accept":"text/html"},
-    signal:AbortSignal.timeout(12000)
+    signal:AbortSignal.timeout(9000)
   });
   if(!response.ok) throw new Error("Public search returned HTTP "+response.status);
   const html=await response.text();
@@ -70,12 +70,12 @@ async function runOrniWebResearch(rawQuery) {
     const title=clean(anchors[i][2]);
     if(!title) continue;
     const item={title,url:target,snippet:snippets[i]||"",domain:new URL(target).hostname,sourceText:null};
-    if(allowed(item.domain)){
+    if(allowed(item.domain)&&results.length<3){
       try{
         let current=target,pageResponse=null;
         for(let hop=0;hop<3;hop++){
           if(!allowed(new URL(current).hostname)) break;
-          pageResponse=await fetch(current,{headers:{"User-Agent":"Mozilla/5.0 (compatible; ORNIResearch/1.0)","Accept":"text/html"},redirect:"manual",signal:AbortSignal.timeout(7000)});
+          pageResponse=await fetch(current,{headers:{"User-Agent":"Mozilla/5.0 (compatible; ORNIResearch/1.0)","Accept":"text/html"},redirect:"manual",signal:AbortSignal.timeout(5000)});
           if(pageResponse.status>=300&&pageResponse.status<400){
             const location=pageResponse.headers.get("location"); if(!location) break;
             current=new URL(location,current).href; continue;
