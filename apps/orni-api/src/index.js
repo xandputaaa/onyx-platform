@@ -42,7 +42,7 @@ function requireAgentToken(req, res, next) {
 
 
 const referenceCinemaPlaybook = `
-ORNI REFERENCE CINEMA PLAYBOOK — VERSION 2.1 — PERMANENT PRODUCTION STANDARD
+ORNI REFERENCE CINEMA PLAYBOOK — VERSION 3.0 — PERMANENT PRODUCTION STANDARD
 These references are mandatory craft knowledge, not optional inspiration. Apply them to every retro animation, PS1/PS2 game cinematic, character short, fashion film and CELVANI campaign. Choose the correct style family; do not blend them carelessly.
 
 SOURCE REFERENCES
@@ -95,6 +95,21 @@ E. ACCEPTANCE GATE
 - Do not label a render production-ready because FFmpeg decoded it or because a 16x16 texture was attached to each material.
 - Require visual evidence for: authored UV texture readability; custom silhouettes; coherent art direction; readable crash and exit; believable walk cycle and foot contact; camera staging; no clipping; deliberate lighting/fog; final frame composition.
 - If any critical item fails, report “prototype / revision required” and do not call it finished. Deliver a contact sheet or style-frame preview for review before a costly full render. Keep all production free-only.
+
+F. LIVE FREE-ASSET PIPELINE, LICENSING AND SOURCE PROVENANCE
+- Prefer Poly Haven's public API and CC0 photographic texture library for source maps. Useful validated source slugs for the crash-woods workflow: asphalt_01, pine_bark, forest_ground_04, rusty_painted_metal, polystyrene, rubber_tiles and metal_plate. Fetch diffuse/albedo maps, downscale to 32–128 px, quantize to a limited 5-bit-per-channel palette, apply restrained Bayer dithering and use nearest-neighbour texture sampling. Keep the source photo and processed PSX atlas provenance in the Blender scene metadata and production report. When using the live Poly Haven API, visibly credit "Powered by Poly Haven".
+- For real PSX models, prioritize explicitly CC0 packs such as GGBotNet's "PSX Style Cars" on OpenGameArt. Import the actual model and its texture maps into Blender; do not merely list a model URL as if it were imported. Record author, source URL, license and whether import/texture validation succeeded. If the download or import fails, stop the production job and report the exact blocker; never silently substitute the old primitive placeholder.
+- Sketchfab CC-BY models may be used only after verifying downloadable status, the exact license and required attribution. Treat Pinterest, TikTok and YouTube as visual reference sources, not asset licenses. Do not scrape or reuse ripped game assets from The Models Resource or other copyrighted game archives in commercial CELVANI work without explicit written permission.
+- Temporary downloads and reference images must be removed after their geometry/materials are imported and packed into the .blend. Do not accumulate unused reference files or retain them indefinitely.
+
+G. VERTICAL CINEMATOGRAPHY AND CAMERA VALIDATION
+- For social-first fashion and character films, default to 9:16 unless the brief explicitly requests another ratio. Compose for the narrow frame from preproduction; do not crop a landscape master after rendering. Keep the subject, vehicle, garment details and captions inside a safe central region.
+- Author camera shots as a timecoded sequence with motivated tracking, fixed-angle holds and deliberate cuts. Never key a camera path by guessing. Validate the target point and important subject bounds through Blender's world_to_camera_view at each shot keyframe and representative in-between frames. Check camera clip planes and test for occlusion/intersection before full render.
+- Render a low-cost shot contact sheet or one still per shot, inspect it, and fix black frames, geometry intersections, empty compositions, blown highlights and washed-out lighting before the full animation. A successful camera-target test is necessary but not sufficient: visual review is still mandatory.
+
+H. LIGHTING AND MATERIAL SEPARATION
+- PSX: use restrained vertex lighting, directional moon/key light, motivated warm practicals, rim separation, atmospheric distance fog and intentional contrast. Major visible surfaces must have real photo-derived or authored painted texture maps; a shader tint or procedural noise alone does not pass.
+- Modern luxury: use a separate high-fidelity PBR preset with refined material response, fabric microstructure, controlled reflections, realistic light shaping, physics and compositing. Keep this distinct from PSX unless the brief explicitly asks for a hybrid.
 
 PRESET 2 — PS2 CUTSCENE / DEADPAN CHARACTER COMEDY
 Keep separate from PS1. Aim for a 2000s console cutscene: recognizable expressive character, simpler low-texture world, deliberate cinematic framing, direct-to-camera or conversational composition, restrained mouth motion, deadpan timing, purposeful silence and a small number of motivated cuts. Structure: setup → character hold → statement/rant → pause → punchline/final line → end hold. The joke lands through performance and pacing, not random movement. Original scripts and characters only.
