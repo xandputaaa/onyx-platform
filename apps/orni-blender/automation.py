@@ -688,20 +688,50 @@ def create_crash_woods_cinema():
                 direction=Vector((corner.x,corner.y,corner.z))
                 if direction.length>0:
                     near_samples.append(direction.normalized()*near_clip)
-            obstruction=None
-            for near_point in near_samples:
-                direction=(cam.matrix_world.to_3x3() @ near_point).normalized()
-                hit,hit_location,_,_,hit_obj,_=scene.ray_cast(
-                    depsgraph,camera_origin,direction,distance=near_clip*1.02
-                )
-                if hit and hit_obj and "fog" not in hit_obj.name.lower():
-                    obstruction=hit_obj
+            # ORNI may automatically re-stage imported foliage that physically enters
+            # the camera's near plane. This is a scene edit, not a disabled validation:
+            # after every move the complete near-plane footprint is ray-tested again.
+            def find_near_plane_obstruction():
+                current_graph=bpy.context.evaluated_depsgraph_get()
+                origin=cam.matrix_world.translation
+                for near_point in near_samples:
+                    ray_direction=(cam.matrix_world.to_3x3() @ near_point).normalized()
+                    hit,hit_location,_,_,hit_obj,_=scene.ray_cast(
+                        current_graph,origin,ray_direction,distance=near_clip*1.02
+                    )
+                    if hit and hit_obj and "fog" not in hit_obj.name.lower():
+                        return hit_obj
+                return None
+            repairs=0
+            while True:
+                obstruction=find_near_plane_obstruction()
+                if not obstruction:
                     break
-            if obstruction:
-                raise RuntimeError(
-                    "Camera near-plane obstruction at frame "+str(sample_frame)+
-                    " by "+obstruction.name+" (within "+str(round(near_clip,3))+"m clip plane)"
-                )
+                obstacle_name=obstruction.name
+                lower_name=obstacle_name.lower()
+                if not ("forest pine" in lower_name or "impact cedar" in lower_name):
+                    raise RuntimeError(
+                        "Camera near-plane obstruction at frame "+str(sample_frame)+
+                        " by "+obstacle_name+" (within "+str(round(near_clip,3))+"m clip plane)"
+                    )
+                source_obj=obstruction.original if hasattr(obstruction,"original") else obstruction
+                side=1.0 if source_obj.matrix_world.translation.x>=camera_origin.x else -1.0
+                source_obj.location.x+=side*1.5
+                repairs+=1
+                bpy.context.view_layer.update()
+                if repairs>16:
+                    raise RuntimeError(
+                        "ORNI could not clear camera near-plane after 16 foliage re-staging moves at frame "+
+                        str(sample_frame)+"; last obstruction: "+obstacle_name
+                    )
+            if repairs:
+                scene.setdefault("ORNI_Camera_Foliage_Repairs",json.dumps([]))
+                try:
+                    repair_log=json.loads(scene["ORNI_Camera_Foliage_Repairs"])
+                except Exception:
+                    repair_log=[]
+                repair_log.append({"frame":sample_frame,"moves":repairs})
+                scene["ORNI_Camera_Foliage_Repairs"]=json.dumps(repair_log)
     scene["ORNI_Camera_Frames_Validated"]=True
     scene["ORNI_Camera_Validation_Report"]=json.dumps(camera_report)
     scene["ORNI_Texture_Provenance"]="Poly Haven CC0 photographic diffuse maps; 64px; 5-bit/channel Bayer dither; nearest-neighbour"
