@@ -68,11 +68,11 @@ def build():
     # Camera beats match the user-approved 0-3 / 3-7 / 7-11 / 11-14 / 14-15 storyboard.
     # Frames 1,37,85,133,169 at 12 fps.
     shots=[
-        (1,(1.8,-5.0,2.3),(0,-.15,1.65)),       # interview, manager shoulder foreground
+        (1,(1.35,-1.1,2.35),(0,-3.55,1.95)),       # manager at desk, shot from COZO side
         (37,(1.65,-1.95,2.72),(0,0,2.52)),       # COZO mask and puffer
         (85,(2.6,-5.0,2.7),(0,0,1.6)),        # standing from chair
         (133,(.8,-1.0,2.85),(0,3.0,1.55)),       # rear view toward glass storefront
-        (169,(.9,-5.0,2.6),(0,-3.55,2.1)),    # manager reaction
+        (169,(1.0,-1.15,2.4),(0,-3.55,2.15)),    # manager reaction from front
     ]
     for frame,loc,target in shots:
         cam.location=loc
