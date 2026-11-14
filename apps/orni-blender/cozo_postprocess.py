@@ -39,7 +39,7 @@ def run(input_video, output_video):
         else:
             cmd+=["-map","0:v","-an"]
         # Filter uses a temporary path with no quote characters; subtitle file is local.
-        cmd+=["-vf","ass="+str(captions),"-c:v","libx264","-profile:v","baseline",
+        cmd+=["-vf","drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable=gte(t\\\\,14.5),ass="+str(captions),"-c:v","libx264","-profile:v","baseline",
               "-level:v","3.1","-pix_fmt","yuv420p","-movflags","+faststart",
               "-t","15",str(output_video)]
         subprocess.run(cmd,check=True,timeout=180)
