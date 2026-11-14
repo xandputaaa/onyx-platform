@@ -29,6 +29,16 @@ jobs:
         run: blender -b --python-exit-code 1 --python-expr 'import bpy; print("Blender ready:", bpy.app.version_string)'
       - name: Validate skinned humanoid GLB import
         run: blender -b --python-exit-code 1 --python apps/orni-blender/test_cozo_base_import.py
+      - name: Save editable COZO boutique Blender scene
+        run: blender -b --python-exit-code 1 --python apps/orni-blender/cozo_boutique.py -- "${{ github.workspace }}/cozo-episode-001-scene.blend"
+      - name: Upload editable Blender scene
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cozo-episode-001-editable-blend
+          path: cozo-episode-001-scene.blend
+          if-no-files-found: error
+          retention-days: 14
       - name: Render all five COZO reference shots
         env:
           COZO_PREVIEW_DIR: ${{ github.workspace }}/cozo-preview-frames
