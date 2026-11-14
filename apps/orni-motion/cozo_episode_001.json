@@ -1,0 +1,27 @@
+{
+  "project": "CELVANI",
+  "series": "COZO",
+  "episode": "001",
+  "title": "First Day at Work",
+  "format": {"aspect_ratio":"9:16","width":720,"height":1280,"fps":15,"seconds":15},
+  "character": {
+    "id":"cozo_v1",
+    "type":"faceless low-poly crash-test mannequin",
+    "head":"matte pale gray angular face, black oval eyes, black-and-white crash-test circle at temple",
+    "clothes":"oversized cropped black quilted CELVANI puffer, extremely baggy washed pale-blue denim, chunky black shoes",
+    "continuity":"do not change head proportions, clothing colors or logo placement between shots"
+  },
+  "visual_style":"original retro PS2 game cutscene, low-poly characters, downsampled textures, restrained fixed cameras, concrete CELVANI boutique",
+  "shots":[
+    {"start":0,"end":3,"camera":"two shot","action":"manager interviews seated COZO","dialogue":"Manager: Why do you want to work here?"},
+    {"start":3,"end":7,"camera":"COZO close-up","action":"long awkward pause, deadpan reply","dialogue":"COZO: I don't."},
+    {"start":7,"end":11,"camera":"medium full body","action":"COZO stands slowly"},
+    {"start":11,"end":14,"camera":"wide fixed","action":"COZO walks toward store exit"},
+    {"start":14,"end":15,"camera":"manager reaction / end card","action":"confused manager, CELVANI 001 card"}
+  ],
+  "production_modes":{
+    "motion_storyboard":"available as code; not live deployed",
+    "blender_3d":"planned, needs rig, animation and render validation",
+    "ai_video":"optional, needs eligible GPU/model and cost approval"
+  }
+}
