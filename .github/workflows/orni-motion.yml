@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'apps/orni-motion/**'
+      - 'apps/orni-blender/**'
       - '.github/workflows/orni-motion.yml'
   workflow_dispatch:
 jobs:
@@ -19,5 +20,7 @@ jobs:
           sudo apt-get install -y ffmpeg
           python -m pip install --upgrade pip
           pip install pillow numpy opencv-python-headless
+      - name: Syntax-check Blender scripts
+        run: python -m py_compile apps/orni-blender/automation.py apps/orni-blender/cozo_rig.py
       - name: Run 9:16 render smoke test
         run: python -m unittest discover -s apps/orni-motion -p 'test_*.py' -v
