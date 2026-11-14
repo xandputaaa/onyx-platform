@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { readFileSync } from 'node:fs';
 import { timingSafeEqual } from 'node:crypto';
 import { describeOnyxCore } from './manifest.js';
 import { respondToMessage } from './conversation.js';
@@ -16,6 +17,13 @@ export function createOnyxServer({token=process.env.ONYX_CORE_TOKEN}={}) {
     res.setHeader('X-Content-Type-Options','nosniff');
     const respond=(status,body)=>{res.statusCode=status;res.end(JSON.stringify(body));};
     const path=new URL(req.url||'/', 'http://localhost').pathname;
+    if(req.method==='GET' && path==='/'){
+      res.setHeader('Content-Type','text/html; charset=utf-8');
+      res.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
+      res.setHeader('Referrer-Policy','no-referrer');
+      res.statusCode=200;
+      return res.end(readFileSync(new URL('../public/index.html',import.meta.url)));
+    }
     if(req.method==='GET' && path==='/health')
       return respond(200,{ok:true,service:'onyx-core',version:'0.1-foundation',modelConnected:false,voiceConnected:false,missionExecutionEnabled:false});
     if(path.startsWith('/api/')) {
