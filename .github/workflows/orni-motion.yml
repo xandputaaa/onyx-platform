@@ -28,7 +28,7 @@ jobs:
       - name: Render all five COZO reference shots
         env:
           COZO_PREVIEW_DIR: ${{ github.workspace }}/cozo-preview-frames
-        run: blender -b --python apps/orni-blender/test_cozo_scene.py
+        run: blender -b --python-exit-code 1 --python apps/orni-blender/test_cozo_scene.py
       - name: Upload Blender preview frames
         if: always()
         uses: actions/upload-artifact@v4
@@ -37,7 +37,7 @@ jobs:
           path: cozo-preview-frames/*.png
           if-no-files-found: warn
       - name: Render complete COZO 15-second Blender blockout
-        run: blender -b --python apps/orni-blender/render_cozo_episode.py -- "${{ github.workspace }}/cozo-episode-001-blockout.mp4"
+        run: blender -b --python-exit-code 1 --python apps/orni-blender/render_cozo_episode.py -- "${{ github.workspace }}/cozo-episode-001-blockout.mp4"
       - name: Upload complete COZO MP4
         if: always()
         uses: actions/upload-artifact@v4
