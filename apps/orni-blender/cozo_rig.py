@@ -39,6 +39,21 @@ def build():
     hips=part("HIPS", (0,0,1.05),(.56,.35,.26),denim,root)
     torso=part("CELVANI PUFFER | torso",(0,0,1.82),(.98,.55,.88),black,root)
     head=part("COZO | angular gray head",(0,-.02,2.55),(.48,.40,.59),gray,root)
+    # Recognizable COZO head emblem: flat four-quadrant crash-test disc.
+    # This is a geometry approximation pending the approved UV-textured head.
+    white=material("COZO | emblem off-white",(0.78,0.78,0.75))
+    for q in range(4):
+        angle=q*math.pi/2
+        bpy.ops.mesh.primitive_cylinder_add(vertices=4,radius=.085,depth=.008,location=(.246,-.02,2.61))
+        emblem=bpy.context.object
+        emblem.name="COZO | temple crash-test quadrant %d"%q
+        emblem.rotation_euler=(math.pi/2,0,angle)
+        emblem.data.materials.append(black if q%2==0 else white)
+        emblem.parent=root
+    # Puffer seam strips establish a repeatable garment silhouette.
+    seam=material("CELVANI | puffer seam",(0.035,0.037,0.04))
+    for i in range(4):
+        part("CELVANI | puffer baffle %d"%i,(0,-.29,1.52+i*.19),(.94,.024,.018),seam,root)
     # Low-poly silhouette is intentionally a blockout, not a final likeness.
     for side in (-1,1):
         part("Eye %s"%side,(side*.115,-.232,2.58),(.115,.025,.13),eye,root)
