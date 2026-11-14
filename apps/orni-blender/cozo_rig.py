@@ -221,6 +221,15 @@ def build():
             garment_tube(label+" | stacked denim fold %d"%i,(0,0,0),
                 [(z-.034,rx*.94,ry*.94),(z,rx,ry),(z+.034,rx*.92,ry*.93)],
                 denim,leg,sides=12,seed=i+side*3)
+    # Small angular seam creases and worn denim abrasion at knees.
+    # Thin cloth-colored ridges avoid a smooth, uniformly inflated cylinder.
+    fold=material("CELVANI | denim shadow crease",(.29,.37,.46))
+    for label in ("L","R"):
+        leg=limbs[label][1]
+        for i,z in enumerate((-.29,-.43,-.57)):
+            garment_tube(label+" | knee cloth crease %d"%i,(0,0,0),
+                [(z-.016,.292,.292),(z,.324,.321),(z+.016,.291,.29)],
+                denim,leg,sides=12,seed=i+12)
     # Frames 1–45: seated pose; 46–90: stand; 91–180: walk.\n    # Parent local coordinates are explicit to keep limbs aligned to pivots.
     animate(root,[(1,-.40),(84,-.40),(132,0),(180,0)],"location",2)
     for label,(arm,leg) in limbs.items():
