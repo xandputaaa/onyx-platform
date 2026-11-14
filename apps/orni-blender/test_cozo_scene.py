@@ -20,6 +20,15 @@ assert scene.camera.animation_data is not None
 for name in ("L_SHOULDER","R_SHOULDER","L_HIP","R_HIP"):
     obj=bpy.data.objects.get(name)
     assert obj and obj.animation_data, name
+# Validate standing foot contact before rendering.
+root=bpy.data.objects["COZO_ROOT | motion controller"]
+scene.frame_set(132)
+assert abs(root.location.z)<0.05, "COZO should finish standing at floor height"
+from mathutils import Vector
+for side in ("L","R"):
+    boot=bpy.data.objects[side+" | boot"]
+    bottom=min((boot.matrix_world @ Vector(v)).z for v in boot.bound_box)
+    assert -0.08<=bottom<=0.18, ("Boot hovering or clipping",side,bottom)
 scene.render.engine="BLENDER_WORKBENCH"
 scene.render.resolution_percentage=25
 scene.render.image_settings.file_format="PNG"
