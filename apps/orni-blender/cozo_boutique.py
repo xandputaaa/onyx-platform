@@ -19,7 +19,9 @@ def build():
     textile=cozo_rig.material("CELVANI | hanging black garments",(0.03,0.032,0.035))
     walnut=cozo_rig.material("CELVANI | interview table",(0.18,0.12,0.08))
     cube("Boutique concrete floor",(0,0,-.17),(12,12,.3),concrete)
-    # Side wall wings leave the central aisle open to the storefront.\n    cube("Boutique rear wall left",(-4.8,3.0,2.5),(2.4,.22,5),concrete)\n    cube("Boutique rear wall right",(4.8,3.0,2.5),(2.4,.22,5),concrete)
+    # Side wall wings leave the central aisle open to the storefront.
+    cube("Boutique rear wall left",(-4.8,3.0,2.5),(2.4,.22,5),concrete)
+    cube("Boutique rear wall right",(4.8,3.0,2.5),(2.4,.22,5),concrete)
     glass=cozo_rig.material("CELVANI | tinted storefront",(0.065,0.085,0.11))
     cube("Storefront left glass",(-2.3,4.3,2.15),(3.6,.045,4.2),glass)
     cube("Storefront right glass",(2.3,4.3,2.15),(3.6,.045,4.2),glass)
