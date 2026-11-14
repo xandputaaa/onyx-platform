@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { timingSafeEqual } from 'node:crypto';
 import { describeOnyxCore } from './manifest.js';
 import { respondToMessage } from './conversation.js';
+import { generateReply, providerConfiguration } from './provider.js';
 
 export function authorized(header, secret) {
   if (!secret || typeof header !== 'string' || !/^Bearer\s+\S+$/i.test(header)) return false;
@@ -25,7 +26,7 @@ export function createOnyxServer({token=process.env.ONYX_CORE_TOKEN}={}) {
       return res.end(readFileSync(new URL('../public/index.html',import.meta.url)));
     }
     if(req.method==='GET' && path==='/health')
-      return respond(200,{ok:true,service:'onyx-core',version:'0.1-foundation',modelConnected:false,voiceConnected:false,missionExecutionEnabled:false});
+      return respond(200,{ok:true,service:'onyx-core',version:'0.1-foundation',modelConnected:providerConfiguration().enabled,voiceConnected:false,missionExecutionEnabled:false});
     if(path.startsWith('/api/')) {
       if(!token) return respond(503,{error:'ONYX_CORE_TOKEN_NOT_CONFIGURED'});
       if(!authorized(req.headers.authorization,token)) return respond(401,{error:'UNAUTHORIZED'});
@@ -36,7 +37,9 @@ export function createOnyxServer({token=process.env.ONYX_CORE_TOKEN}={}) {
           for await(const chunk of req){data+=chunk;if(data.length>4096)return respond(413,{error:'PAYLOAD_TOO_LARGE'});}
           const payload=JSON.parse(data);
           const answer=respondToMessage(payload?.message);
-          return respond(answer.ok?200:400,answer);
+          if(!answer.ok)return respond(400,answer);
+          const generated=await generateReply(payload.message);
+          return respond(200,generated.ok?generated:{...answer,providerStatus:generated.reason});
         } catch {return respond(400,{error:'INVALID_JSON'});}
       }
       return respond(404,{error:'NOT_FOUND'});
