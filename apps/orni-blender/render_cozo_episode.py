@@ -4,6 +4,8 @@ Run: blender -b --python apps/orni-blender/render_cozo_episode.py -- /tmp/cozo.m
 """
 import json, subprocess, sys, tempfile
 from pathlib import Path
+# Blender's --python execution does not always put the script directory on sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bpy
 import cozo_boutique
 import cozo_postprocess
