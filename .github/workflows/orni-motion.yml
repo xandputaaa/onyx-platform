@@ -1,5 +1,8 @@
 name: ORNI Motion smoke test
 on:
+  push:
+    branches:
+      - feature/orni-motion-storyboard
   pull_request:
     paths:
       - 'apps/orni-motion/**'
