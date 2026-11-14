@@ -21,4 +21,4 @@ jobs:
           node-version: "22"
       - run: node --check prototypes/onyx-hud/main.mjs
       - run: node --check prototypes/onyx-hud/state.mjs
-      - run: node --test prototypes/onyx-hud/state.test.mjs
+      - run: node --test prototypes/onyx-hud/*.test.mjs
