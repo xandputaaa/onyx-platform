@@ -226,5 +226,34 @@ app.post("/api/orni/mission", async (req, res) => {
   }
 });
 
+
+// COZO production routes stay behind ONYX server credentials.
+// ORNI API must expose these paths and its Blender worker must be deployed
+// before production requests can succeed.
+app.get("/api/orni/cozo/status", async (req,res) => {
+  if(!process.env.ORNI_ACCESS_TOKEN) return res.status(503).json({connected:false,status:"not_configured",message:"ORNI access token is not configured."});
+  try {
+    const r=await fetch(orniBase+"/api/orni/blender/status",{
+      headers:{"Authorization":"Bearer "+process.env.ORNI_ACCESS_TOKEN},
+      signal:AbortSignal.timeout(6000)
+    });
+    const data=await r.json().catch(()=>({}));
+    return res.status(r.ok?200:503).json({connected:data.connected===true,status:data.connected===true?"ready":"offline",detail:data});
+  }catch {
+    return res.status(503).json({connected:false,status:"offline",message:"ORNI Blender worker is unavailable."});
+  }
+});
+app.get("/api/orni/cozo/job", (req,res) => orniForward(req,res,"/api/orni/blender/job-status"));
+app.post("/api/orni/cozo/render", async (req,res) => {
+  if(req.body?.confirmRender!==true) return res.status(400).json({error:"Explicit render confirmation required."});
+  if(!process.env.ORNI_ACCESS_TOKEN) return res.status(503).json({error:"ORNI authentication is not configured."});
+  const status=await fetch(orniBase+"/api/orni/blender/status",{
+    headers:{"Authorization":"Bearer "+process.env.ORNI_ACCESS_TOKEN},
+    signal:AbortSignal.timeout(6000)
+  }).then(r=>r.ok?r.json():null).catch(()=>null);
+  if(!status?.connected) return res.status(503).json({error:"ORNI Blender worker is offline. Render was not started."});
+  return orniForward(req,res,"/api/orni/blender/scene/cozo-video","POST");
+});
+
 app.use((_req, res) => res.sendFile(path.join(here, "../public/index.html")));
 app.listen(port, "0.0.0.0", () => console.log(`ONYX web listening on ${port}`));
