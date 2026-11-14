@@ -27,3 +27,21 @@ Example dialogue.json:
 - Add optional GPU-based ComfyUI backends only when hardware and model licensing permit.
 
 Creative direction: original low-poly PS2-style cutscenes, recurring characters, deadpan comedy, fashion-forward settings. Reference creator imagery is stylistic inspiration, not animation source code.
+
+
+## Blender Episode 001 blockout
+
+The Blender worker now exposes two authenticated queued jobs:
+
+- `POST /api/scene/cozo-rig` — editable COZO procedural character rig
+- `POST /api/scene/cozo-episode` — editable boutique scene with COZO, manager placeholder, five camera positions, and a 180-frame animation timeline
+
+Poll `GET /job-status` with `Authorization: Bearer <ORNI_BLENDER_TOKEN>`; download `/outputs/cozo_episode_001_blockout.blend` using the same token once complete. These endpoints run on the worker's internal control API (port 8765), not the public noVNC port.
+
+For a local headless smoke render, with Blender installed:
+
+```bash
+blender -b --python apps/orni-blender/test_cozo_scene.py
+```
+
+**Known limitations:** No verified rendered episode yet; no final rigged COZO mesh, facial animation, clothing simulation, full character walk cycle or synchronized dialogue in Blender. The scene uses simple primitives and stand-ins. Do not present the blockout as a finished production.
