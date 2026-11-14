@@ -53,9 +53,9 @@ def build():
     # Frames 1,37,85,133,169 at 12 fps.
     shots=[
         (1,(1.8,-5.0,2.3),(0,-.15,1.65)),       # interview, manager shoulder foreground
-        (37,(.65,-2.8,2.65),(0,0,2.55)),       # COZO mask and puffer
+        (37,(1.65,-1.95,2.72),(0,0,2.52)),       # COZO mask and puffer
         (85,(2.6,-5.0,2.7),(0,0,1.6)),        # standing from chair
-        (133,(.8,-.9,2.9),(0,2.5,1.4)),       # rear view toward glass storefront
+        (133,(.8,-1.0,2.85),(0,3.0,1.55)),       # rear view toward glass storefront
         (169,(.9,-5.0,2.6),(0,-3.55,2.1)),    # manager reaction
     ]
     for frame,loc,target in shots:
@@ -69,6 +69,8 @@ def build():
     scene.frame_start=1;scene.frame_end=180;scene.render.fps=12
     scene.render.resolution_x=720;scene.render.resolution_y=1280
     scene.render.resolution_percentage=100
+    cam.data.type="PERSP"
+    cam.data.lens=35
     scene.frame_set(1)
     return {"scene":"CELVANI boutique","character":"COZO procedural blockout","duration":15,"fps":12,"aspectRatio":"9:16","status":"scene_blockout"}
 
