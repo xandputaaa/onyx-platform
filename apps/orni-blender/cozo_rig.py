@@ -16,7 +16,7 @@ def part(name, location, scale, mat, parent=None):
     obj.dimensions=scale; bpy.ops.object.transform_apply(location=False,rotation=False,scale=True)
     obj.data.materials.append(mat)
     if parent:
-        obj.parent=parent; obj.matrix_parent_inverse=parent.matrix_world.inverted()
+        obj.parent=parent; obj.location=location
     return obj
 
 def animate(obj, frames, field="rotation_euler", index=0):
@@ -53,7 +53,7 @@ def build():
         part(label+" | wide denim",(0,0,-.43),(.43,.44,.88),denim,leg_pivot)
         part(label+" | boot",(0,-.08,-.88),(.37,.61,.23),boot,leg_pivot)
         limbs[label]=(arm_pivot,leg_pivot)
-    # Frames 1–45: sitting posture; 46–90: rise; 91–180: walk cycle.
+    # Frames 1–45: seated pose; 46–90: stand; 91–180: walk.\n    # Parent local coordinates are explicit to keep limbs aligned to pivots.
     animate(root,[(1,0),(45,0),(90,.40),(180,.40)],"location",2)
     for label,(arm,leg) in limbs.items():
         sign=1 if label=="L" else -1
