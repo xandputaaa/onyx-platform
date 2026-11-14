@@ -76,7 +76,19 @@ def build():
     # Manager is an anonymous neutral mannequin stand-in.
     skin=cozo_rig.material("Manager | neutral warm gray",(0.45,0.39,0.35))
     cube("Manager torso",(0,-3.55,1.65),(.6,.36,.75),steel)
-    cube("Manager head",(0,-3.55,2.25),(.35,.32,.43),skin)
+    # Faceted head is a better placeholder than a raw cube.
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=12,ring_count=8,location=(0,-3.55,2.25))
+    manager_head=bpy.context.object
+    manager_head.name="Manager | faceted head placeholder"
+    manager_head.scale=(.20,.17,.26)
+    manager_head.data.materials.append(skin)
+    for side in (-1,1):
+        cube("Manager | sweater sleeve %s"%side,(side*.39,-3.55,1.62),(.20,.35,.62),steel)
+        cube("Manager | hand %s"%side,(side*.39,-3.62,1.26),(.13,.14,.19),skin)
+        x=side*4.15
+        cube("Boutique display plinth %s"%side,(x,.4,.44),(1.1,1.2,.88),concrete)
+        cube("Boutique display sculpture %s"%side,(x,.4,1.03),(.45,.5,.35),textile)
+        cube("Boutique wall shelf %s"%side,(x,1.45,1.7),(1.3,.32,.08),steel)
     scene=bpy.context.scene
     cam=scene.camera
     cam.location=(3.5,-7.5,3.05)
@@ -87,8 +99,8 @@ def build():
     # Frames 1,37,85,133,169 at 12 fps.
     shots=[
         (1,(1.35,-1.1,2.35),(0,-3.55,1.95)),       # manager at desk, shot from COZO side
-        (37,(1.65,-1.95,2.72),(0,0,2.52)),       # COZO mask and puffer
-        (85,(2.6,-5.0,2.7),(0,0,1.6)),        # standing from chair
+        (37,(2.55,-3.25,2.85),(0,0,2.08)),       # COZO mask and puffer
+        (85,(3.5,-6.4,3.0),(0,0,1.5)),        # standing from chair
         (133,(.8,-1.0,2.85),(0,3.0,1.55)),       # rear view toward glass storefront
         (169,(1.0,-1.15,2.4),(0,-3.55,2.15)),    # manager reaction from front
     ]
