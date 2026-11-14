@@ -24,7 +24,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pillow numpy opencv-python-headless
       - name: Syntax-check Blender scripts
-        run: python -m py_compile apps/orni-blender/automation.py apps/orni-blender/cozo_rig.py apps/orni-blender/cozo_boutique.py apps/orni-blender/test_cozo_scene.py apps/orni-blender/render_cozo_episode.py apps/orni-motion/cozo_postprocess.py
+        run: python -m py_compile apps/orni-blender/automation.py apps/orni-blender/cozo_rig.py apps/orni-blender/cozo_boutique.py apps/orni-blender/test_cozo_scene.py apps/orni-blender/render_cozo_episode.py apps/orni-blender/render_cozo_hero.py apps/orni-motion/cozo_postprocess.py
       - name: Check headless Blender startup
         run: blender -b --python-exit-code 1 --python-expr 'import bpy; print("Blender ready:", bpy.app.version_string)'
       - name: Render all five COZO reference shots
@@ -38,6 +38,16 @@ jobs:
           name: cozo-five-shot-preview
           path: cozo-preview-frames/*.png
           if-no-files-found: warn
+      - name: Render COZO material hero frame
+        run: blender -b --python-exit-code 1 --python apps/orni-blender/render_cozo_hero.py -- "${{ github.workspace }}/cozo-hero.png"
+      - name: Upload COZO material hero frame
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cozo-material-hero-frame
+          path: cozo-hero.png
+          if-no-files-found: warn
+          retention-days: 14
       - name: Render complete COZO 15-second Blender blockout
         run: blender -b --python-exit-code 1 --python apps/orni-blender/render_cozo_episode.py -- "${{ github.workspace }}/cozo-episode-001-blockout.mp4"
       - name: Upload complete COZO MP4
