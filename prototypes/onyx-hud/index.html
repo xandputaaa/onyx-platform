@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#07090d"><title>ONYX — Spatial Prototype</title><link rel="stylesheet" href="./style.css"></head>
+<body>
+<div class="shell">
+<header><div class="brand">ONYX <span>/ SPATIAL LAB</span></div><div class="status"><span class="dot"></span> LOCAL SIMULATOR · NO LIVE DATA</div></header>
+<main id="workspace" class="workspace glasses" aria-label="ONYX visual simulator">
+  <canvas id="orb" aria-label="Procedural liquid-metal avatar visualization"></canvas>
+  <div class="crosshair" aria-hidden="true"></div>
+  <section class="overlay top"><div class="eyebrow">ONYX / SYSTEM</div><h1 id="stateTitle">STANDBY</h1><p id="subtext">Visual prototype · no microphone connection</p></section>
+  <section class="panel left" data-panel="missions"><div class="eyebrow">MISSIONS</div><h2>COMMAND CENTER</h2><p>Simulated device session</p><p>Voice: not connected</p><p>Server: not connected</p></section>
+  <section class="panel right" data-panel="karen"><div class="eyebrow">KAREN / PREVIEW</div><h2>MARKET INTELLIGENCE</h2><p>Read-only placeholder</p><p>No quotes or predictions loaded</p></section>
+  <div class="holoLabel">OPTICAL DISPLAY PREVIEW · BLACK BACKGROUND · VIEWING ANGLE NOT CALIBRATED</div>
+  <div class="bottomCaption">ONYX · FERROFLUID STUDY / LIQUID STRETCH</div>
+</main>
+<section class="controls" aria-label="Simulator controls">
+  <div class="controlGroup"><label for="mode">Display</label><select id="mode"><option value="glasses">GLASSES / HUD</option><option value="holo">HOLO / REFLECTOR</option></select></div>
+  <div class="controlGroup"><label for="state">Avatar state</label><select id="state"><option>idle</option><option>listening</option><option>thinking</option><option>speaking</option><option>alert</option><option>muted</option><option>offline</option></select></div>
+  <div class="controlGroup"><label for="audio">Audio response (simulated)</label><input id="audio" type="range" min="0" max="100" value="35"></div>
+  <div class="controlGroup"><label for="panel">HUD panel</label><select id="panel"><option value="missions">Missions</option><option value="karen">KAREN</option><option value="celvani">CELVANI</option></select></div>
+  <label class="toggle"><input type="checkbox" id="mirror"> Mirror HOLO output</label>
+  <label class="toggle"><input type="checkbox" id="reduced"> Reduce motion</label>
+  <button id="reset" type="button">Reset panels</button>
+</section>
+<footer>DEVELOPMENT ONLY · NO CAMERA, MICROPHONE, ACCOUNT CONNECTION, OR TRADING · Drag HUD panels to reposition</footer>
+</div><script type="module" src="./main.mjs"></script></body></html>

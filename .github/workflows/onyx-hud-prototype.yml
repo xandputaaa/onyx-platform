@@ -1,0 +1,24 @@
+name: ONYX HUD prototype tests
+on:
+  pull_request:
+    paths:
+      - "prototypes/onyx-hud/**"
+      - ".github/workflows/onyx-hud-prototype.yml"
+  push:
+    branches: ["design/onyx-spatial-hardware-v1"]
+    paths:
+      - "prototypes/onyx-hud/**"
+      - ".github/workflows/onyx-hud-prototype.yml"
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --check prototypes/onyx-hud/main.mjs
+      - run: node --check prototypes/onyx-hud/state.mjs
+      - run: node --test prototypes/onyx-hud/*.test.mjs

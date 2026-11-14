@@ -1,0 +1,6 @@
+export function clamp01(n){return Number.isFinite(n)?Math.max(0,Math.min(1,n)):0;}
+export function validateDeskPlane(plane){if(!plane||!Array.isArray(plane.center)||plane.center.length!==3||!plane.center.every(Number.isFinite))return false;return Number.isFinite(plane.width)&&plane.width>=.25&&plane.width<=5&&Number.isFinite(plane.depth)&&plane.depth>=.25&&plane.depth<=5&&Array.isArray(plane.normal)&&plane.normal.length===3&&plane.normal.every(Number.isFinite)&&Math.abs(Math.hypot(...plane.normal)-1)<.05&&Math.abs(plane.normal[1])>.9;}
+export function createSimulatedDesk(width=1.2,depth=.7){return {center:[0,.75,-1],normal:[0,1,0],width,depth,source:"simulated"};}
+export function placeOnDesk(plane,u,v,height=0){if(!validateDeskPlane(plane))throw new TypeError("Invalid horizontal desk plane");const x=Math.max(-.5,Math.min(.5,u-.5))*plane.width;const z=Math.max(-.5,Math.min(.5,v-.5))*plane.depth;return [plane.center[0]+x,plane.center[1]+Math.max(0,height),plane.center[2]+z];}
+export function canAnchor({tracking,confidence,plane}){return tracking===true&&clamp01(confidence)>=.8&&validateDeskPlane(plane);}
+export function deskStatus({tracking,confidence,plane}){return canAnchor({tracking,confidence,plane})?"anchored":tracking?"scanning":"unavailable";}
