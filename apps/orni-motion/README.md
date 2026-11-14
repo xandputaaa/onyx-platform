@@ -45,3 +45,14 @@ blender -b --python apps/orni-blender/test_cozo_scene.py
 ```
 
 **Known limitations:** No verified rendered episode yet; no final rigged COZO mesh, facial animation, clothing simulation, full character walk cycle or synchronized dialogue in Blender. The scene uses simple primitives and stand-ins. Do not present the blockout as a finished production.
+
+
+## Deployment status and render gate (2026-11-14)
+
+Railway inventory check: ORNI project currently has **zero services**; ONYX project has `onyx-web` only. Consequently none of the `/api/scene/cozo-*` Blender endpoints is currently live. A GitHub code commit is not a deployment.
+
+The CI workflow `.github/workflows/orni-motion.yml` now triggers on branch push and pull request, attempts a headless Blender five-frame render, uploads those frames, and checks offline video finishing. A workflow configuration is not evidence of a successful run.
+
+**Before provisioning a new Blender worker:** confirm Railway resource usage and cost. Do not deploy automatically when the project is free-only or a new service could incur charges. KAREN must remain untouched.
+
+**Release gate:** CI Blender scene tests pass; inspect five contact frames against the approved COZO images; render a full 15-second MP4; verify 9:16, playback, audio and subtitles; only then consider merging PR #3.
