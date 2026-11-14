@@ -30,7 +30,7 @@ jobs:
       - name: Validate skinned humanoid GLB import
         run: blender -b --python-exit-code 1 --python apps/orni-blender/test_cozo_base_import.py
       - name: Save editable COZO boutique Blender scene
-        run: blender -b --python-exit-code 1 --python apps/orni-blender/cozo_boutique.py -- "${{ github.workspace }}/cozo-episode-001-scene.blend"
+        run: PYTHONPATH=apps/orni-blender blender -b --python-exit-code 1 --python apps/orni-blender/cozo_boutique.py -- "${{ github.workspace }}/cozo-episode-001-scene.blend"
       - name: Upload editable Blender scene
         if: success()
         uses: actions/upload-artifact@v4
