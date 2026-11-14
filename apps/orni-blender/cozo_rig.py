@@ -168,11 +168,12 @@ def build():
         bsdf.inputs["Roughness"].default_value=.94
     # Puffer seam strips establish a repeatable garment silhouette.
     seam=material("CELVANI | puffer seam",(0.035,0.037,0.04))
-    for i in range(5):
-        z=1.47+i*.155
-        # Quilted front volume, not painted stripes.
-        part("CELVANI | quilted front panel %d"%i,(0,-.29,z),(.96,.18,.135),black,root)
-        part("CELVANI | horizontal stitch %d"%i,(0,-.391,z+.071),(.93,.009,.008),seam,root)
+    # Connected low-poly padded quilt channels instead of cuboid strips.
+    for band in range(5):
+        z=1.47+band*.155
+        garment_tube("CELVANI | padded torso channel %d"%band,(0,0,0),
+            [(z-.066,.47,.33),(z,.54,.39),(z+.066,.47,.33)],
+            black,root,sides=16,seed=band+10)
     # Raised collar/hood rim around COZO's neck.
     for side in (-1,1):
         part("CELVANI | hood shoulder rim %s"%side,(side*.32,-.045,2.30),(.32,.38,.25),black,root)
