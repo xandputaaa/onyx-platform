@@ -19,7 +19,7 @@ def build():
     textile=cozo_rig.material("CELVANI | hanging black garments",(0.03,0.032,0.035))
     walnut=cozo_rig.material("CELVANI | interview table",(0.18,0.12,0.08))
     cube("Boutique concrete floor",(0,0,-.17),(12,12,.3),concrete)
-    cube("Boutique rear wall",(0,3,2.5),(12,.22,5),concrete)
+    # Side wall wings leave the central aisle open to the storefront.\n    cube("Boutique rear wall left",(-4.8,3.0,2.5),(2.4,.22,5),concrete)\n    cube("Boutique rear wall right",(4.8,3.0,2.5),(2.4,.22,5),concrete)
     glass=cozo_rig.material("CELVANI | tinted storefront",(0.065,0.085,0.11))
     cube("Storefront left glass",(-2.3,4.3,2.15),(3.6,.045,4.2),glass)
     cube("Storefront right glass",(2.3,4.3,2.15),(3.6,.045,4.2),glass)
@@ -29,7 +29,7 @@ def build():
     sign.body="CELVANI"; sign.size=.56; sign.extrude=.005
     sign_obj=bpy.data.objects.new("CELVANI | wall sign",sign)
     bpy.context.scene.collection.objects.link(sign_obj)
-    sign_obj.location=(-2.4,2.85,3.15)
+    sign_obj.location=(-5.75,2.83,3.15)
     sign_obj.rotation_euler=(1.5708,0,0)
     cube("Interview table",(0,-2.0,.92),(2.5,1.2,.1),walnut)
     for side in (-1,1):
@@ -49,11 +49,15 @@ def build():
     direction=Vector((0,-.5,1.45))-cam.location
     cam.rotation_euler=direction.to_track_quat("-Z","Y").to_euler()
     # Keyframes for cutscene camera angles (constant interpolation).
-    shots=[(1,(3.5,-7.5,3.05),(0,-.5,1.45)),
-           (37,(1.2,-4.4,2.6),(0,0,2.4)),
-           (85,(3.3,-6.7,2.9),(0,0,1.55)),
-           (133,(3.0,-6.5,3.0),(0,-1.1,1.55)),
-           (169,(0.4,-6.0,2.7),(0,-3.5,2.1))]
+    # Camera beats match the user-approved 0-3 / 3-7 / 7-11 / 11-14 / 14-15 storyboard.
+    # Frames 1,37,85,133,169 at 12 fps.
+    shots=[
+        (1,(1.8,-5.0,2.3),(0,-.15,1.65)),       # interview, manager shoulder foreground
+        (37,(.65,-2.8,2.65),(0,0,2.55)),       # COZO mask and puffer
+        (85,(2.6,-5.0,2.7),(0,0,1.6)),        # standing from chair
+        (133,(.8,-.9,2.9),(0,2.5,1.4)),       # rear view toward glass storefront
+        (169,(.9,-5.0,2.6),(0,-3.55,2.1)),    # manager reaction
+    ]
     for frame,loc,target in shots:
         cam.location=loc
         cam.rotation_euler=(Vector(target)-cam.location).to_track_quat("-Z","Y").to_euler()
