@@ -39,6 +39,31 @@ def part(name, location, scale, mat, parent=None):
         obj.parent=parent; obj.location=location
     return obj
 
+def garment_tube(name, loc, levels, mat, parent=None, sides=12, seed=0):
+    """Connected, faceted cloth volume with irregular silhouette and fold ridges.
+    levels: (local_z, radius_x, radius_y); mesh is in parent's local space.
+    """
+    verts=[]; faces=[]
+    for k,(z,rx,ry) in enumerate(levels):
+        for j in range(sides):
+            a=2*math.pi*j/sides
+            ripple=1+.035*math.sin(j*2.1+k*1.8+seed)+.025*math.sin(j*4.0-k*2.2)
+            verts.append((rx*math.cos(a)*ripple,ry*math.sin(a)*ripple,z))
+    for k in range(len(levels)-1):
+        for j in range(sides):
+            n=k*sides+j; q=k*sides+(j+1)%sides
+            faces.append((n,q,q+sides,n+sides))
+    faces.append(tuple(reversed(range(sides))))
+    faces.append(tuple((len(levels)-1)*sides+j for j in range(sides)))
+    mesh=bpy.data.meshes.new(name+" | connected garment topology")
+    mesh.from_pydata(verts,[],faces);mesh.update()
+    obj=bpy.data.objects.new(name,mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.data.materials.append(mat)
+    if parent: obj.parent=parent
+    obj.location=loc
+    return obj
+
 def animate(obj, frames, field="rotation_euler", index=0):
     for frame,value in frames:
         getattr(obj,field)[index]=value
@@ -152,13 +177,13 @@ def build():
     for side,label in [(-1,"L"),(1,"R")]:
         arm_pivot=bpy.data.objects.new(label+"_SHOULDER",None); bpy.context.collection.objects.link(arm_pivot)
         arm_pivot.parent=root; arm_pivot.location=(side*.57,0,2.08)
-        part(label+" | puffer sleeve",(side*.04,0,-.37),(.40,.47,.79),black,arm_pivot)
+        garment_tube(label+" | puffer sleeve",(side*.04,0,0),[(-.77,.17,.20),(-.62,.22,.24),(-.45,.24,.26),(-.26,.25,.27),(-.08,.22,.25),(.04,.19,.22)],black,arm_pivot,seed=1 if side<0 else 2)
         for band in range(3):
             part(label+" | sleeve quilt %d"%band,(side*.04,-.246,-.18-band*.21),(.38,.035,.015),seam,arm_pivot)
         part(label+" | gray hand",(side*.04,0,-.82),(.19,.19,.23),gray,arm_pivot)
         leg_pivot=bpy.data.objects.new(label+"_HIP",None); bpy.context.collection.objects.link(leg_pivot)
         leg_pivot.parent=root; leg_pivot.location=(side*.23,0,1.02)
-        part(label+" | wide denim",(0,0,-.43),(.52,.51,.88),denim,leg_pivot)
+        garment_tube(label+" | wide denim",(0,0,0),[(-.90,.31,.30),(-.83,.33,.32),(-.73,.31,.32),(-.61,.30,.29),(-.48,.32,.30),(-.35,.30,.31),(-.20,.28,.29),(-.06,.27,.27),(.04,.26,.25)],denim,leg_pivot,seed=3 if side<0 else 4)
         part(label+" | denim cuff",(0,-.012,-.82),(.54,.54,.12),denim,leg_pivot)
         part(label+" | boot",(0,-.08,-.88),(.37,.61,.23),boot,leg_pivot)
         limbs[label]=(arm_pivot,leg_pivot)
