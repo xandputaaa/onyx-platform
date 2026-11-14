@@ -1058,6 +1058,11 @@ def process_jobs():
             if not target.is_file() or target.stat().st_size<1024:
                 raise RuntimeError("COZO preview render did not produce a valid PNG")
             job["result"]={"ok":True,"preview":"/outputs/cozo_episode_001_preview.png","frame":95,"aspectRatio":"9:16","status":"blockout_preview","note":"Workbench preview frame; not finished character or video."}
+        elif job["action"]=="cozo_video":
+            import render_cozo_episode
+            target=OUT/"cozo_episode_001_blockout.mp4"
+            job["result"]=render_cozo_episode.render(target)
+            job["result"]["video"]="/outputs/cozo_episode_001_blockout.mp4"
         elif job["action"]=="render":
             scene=bpy.context.scene
             scene.render.filepath=str(OUT/"celvani_render.png")
@@ -1085,7 +1090,7 @@ class Handler(BaseHTTPRequestHandler):
             with JOB_LOCK: return self.reply(200,dict(JOB_STATUS))
         if self.path=="/health": return self.reply(200,{"ok":True,"service":"orni-blender-control","blender":bpy.app.version_string})
         if self.path=="/outputs": return self.reply(200,{"files":[p.name for p in OUT.iterdir() if p.is_file()]})
-        if self.path in ("/outputs/celvani_hoodie_blockout.png","/outputs/celvani_hoodie_blockout.blend","/outputs/celvani_render.png","/outputs/orni_retro_preview.png","/outputs/orni_retro_cinema.blend","/outputs/orni_retro_cinema.mp4","/outputs/orni_crash_woods_preview.png","/outputs/orni_crash_woods.blend","/outputs/orni_crash_woods_15s.mp4","/outputs/cozo_rig_blockout.blend","/outputs/cozo_episode_001_blockout.blend","/outputs/cozo_episode_001_preview.png"):
+        if self.path in ("/outputs/celvani_hoodie_blockout.png","/outputs/celvani_hoodie_blockout.blend","/outputs/celvani_render.png","/outputs/orni_retro_preview.png","/outputs/orni_retro_cinema.blend","/outputs/orni_retro_cinema.mp4","/outputs/orni_crash_woods_preview.png","/outputs/orni_crash_woods.blend","/outputs/orni_crash_woods_15s.mp4","/outputs/cozo_rig_blockout.blend","/outputs/cozo_episode_001_blockout.blend","/outputs/cozo_episode_001_preview.png","/outputs/cozo_episode_001_blockout.mp4"):
             if not TOKEN or self.headers.get("Authorization")!="Bearer "+TOKEN: return self.reply(401,{"error":"unauthorized"})
             path=OUT/self.path.rsplit("/",1)[-1]
             if not path.is_file(): return self.reply(404,{"error":"file_not_ready"})
@@ -1099,7 +1104,7 @@ class Handler(BaseHTTPRequestHandler):
         n=int(self.headers.get("Content-Length","0"))
         if n>4096: return self.reply(413,{"error":"payload_too_large"})
         body=json.loads(self.rfile.read(n) or b"{}")
-        action={"/api/scene/celvani-hoodie":"hoodie","/api/scene/retro-cinema":"retro","/api/scene/cozo-rig":"cozo_rig","/api/scene/cozo-episode":"cozo_episode","/api/scene/cozo-preview":"cozo_preview","/api/render":"render"}.get(self.path)
+        action={"/api/scene/celvani-hoodie":"hoodie","/api/scene/retro-cinema":"retro","/api/scene/cozo-rig":"cozo_rig","/api/scene/cozo-episode":"cozo_episode","/api/scene/cozo-preview":"cozo_preview","/api/scene/cozo-video":"cozo_video","/api/render":"render"}.get(self.path)
         if not action: return self.reply(404,{"error":"unknown_action"})
         with JOB_LOCK:
             if JOB_STATUS.get("status") in ("queued","running"):
