@@ -69,13 +69,41 @@ def build():
     root.empty_display_type="ARROWS"
     hips=part("HIPS", (0,0,1.05),(.56,.35,.26),denim,root)
     torso=part("CELVANI PUFFER | torso",(0,0,1.82),(.98,.55,.88),black,root)
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=10,ring_count=6,location=(0,-.02,2.55))
-    head=bpy.context.object
-    head.name="COZO | faceted matte gray mask blockout"
-    head.scale=(.27,.225,.36)
+    # Connected ring-topology face, replacing the former UV sphere.
+    # Face looks toward negative Y. Front surface contains two indented eye
+    # cavities as real vertices, rather than two floating white eyeballs.
+    rings=14; segments=24
+    vertices=[]; faces=[]
+    for r in range(rings):
+        t=r/(rings-1)
+        z=2.29+.59*t
+        width=.09+.205*math.sin(math.pi*(t**.79))**.72
+        depth=.11+.115*math.sin(math.pi*t)**.65
+        for j in range(segments):
+            a=2*math.pi*j/segments
+            x=width*math.cos(a)
+            y=-.025-depth*math.sin(a)
+            # Carve socket depressions directly into forward face surface.
+            for cx in (-.115,.115):
+                dx=(x-cx)/.074
+                dz=(z-2.62)/.091
+                front=max(0,math.sin(a))
+                y+=.042*math.exp(-2*(dx*dx+dz*dz))*front
+            # Midline nose bridge is a subtle, sharp angular projection.
+            y-=.025*math.exp(-((x/.045)**2+((z-2.52)/.20)**2))*max(0,math.sin(a))
+            vertices.append((x,y,z))
+    for r in range(rings-1):
+        for j in range(segments):
+            a=r*segments+j
+            b=r*segments+(j+1)%segments
+            faces.append((a,b,b+segments,a+segments))
+    faces.extend([tuple(reversed(tuple(range(segments)))),tuple((rings-1)*segments+j for j in range(segments))])
+    mesh=bpy.data.meshes.new("COZO | integrated mask topology")
+    mesh.from_pydata(vertices,[],faces);mesh.update()
+    head=bpy.data.objects.new("COZO | faceted matte gray mask blockout",mesh)
+    bpy.context.collection.objects.link(head)
     head.data.materials.append(gray)
     head.parent=root
-    head.location=(0,-.02,2.55)
     # Recognizable COZO head emblem: flat four-quadrant crash-test disc.
     # This is a geometry approximation pending the approved UV-textured head.
     white=material("COZO | emblem off-white",(0.78,0.78,0.75))
@@ -115,15 +143,11 @@ def build():
         socket.data.materials.append(eye)
         socket.parent=root
         socket.location=(side*.115,-.235,2.60)
-    # Tapered chin plane is a deliberately simple mesh, to be replaced by a
-    # sculpted production mask once the five-shot render is visually checked.
-    bpy.ops.mesh.primitive_cone_add(vertices=8,radius1=.115,radius2=.22,
-                                    depth=.19,location=(0,-.075,2.27))
-    chin=bpy.context.object
-    chin.name="COZO | tapered mask chin"
-    chin.data.materials.append(gray)
-    chin.parent=root
-    chin.location=(0,-.075,2.27)
+    # Chin is now part of the connected mask mesh. A non-rendering locator
+    # retains compatibility with the original scene validation contract.
+    chin=bpy.data.objects.new("COZO | tapered mask chin",None)
+    bpy.context.collection.objects.link(chin)
+    chin.parent=root;chin.location=(0,-.09,2.31)
     limbs={}
     for side,label in [(-1,"L"),(1,"R")]:
         arm_pivot=bpy.data.objects.new(label+"_SHOULDER",None); bpy.context.collection.objects.link(arm_pivot)
