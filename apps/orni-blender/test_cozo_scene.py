@@ -23,10 +23,20 @@ for name in ("L_SHOULDER","R_SHOULDER","L_HIP","R_HIP"):
 scene.render.engine="BLENDER_WORKBENCH"
 scene.render.resolution_percentage=25
 scene.render.image_settings.file_format="PNG"
-with tempfile.TemporaryDirectory() as d:
-    target=Path(d)/"cozo_frame.png"
-    scene.render.filepath=str(target)
-    scene.frame_set(95)
-    bpy.ops.render.render(write_still=True)
-    assert target.is_file() and target.stat().st_size>1024, "No preview frame"
-    print("PASS COZO headless Blender scene and rendered preview:",target.stat().st_size)
+# Persist contact frames for GitHub Actions artifacts; temp output otherwise.
+artifact_dir=os.environ.get("COZO_PREVIEW_DIR")
+def verify_frames(folder):
+    folder=Path(folder)
+    folder.mkdir(parents=True,exist_ok=True)
+    for frame in (1,37,85,133,169):
+        target=folder/("cozo_frame_%03d.png"%frame)
+        scene.render.filepath=str(target)
+        scene.frame_set(frame)
+        bpy.ops.render.render(write_still=True)
+        assert target.is_file() and target.stat().st_size>1024, "Missing frame %d"%frame
+        print("PASS COZO reference shot frame",frame,target.stat().st_size)
+if artifact_dir:
+    verify_frames(artifact_dir)
+else:
+    with tempfile.TemporaryDirectory() as d:
+        verify_frames(d)
