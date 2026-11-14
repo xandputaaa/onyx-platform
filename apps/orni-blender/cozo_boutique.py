@@ -48,6 +48,24 @@ def build():
     sign_obj.location=(-5.75,2.83,3.15)
     sign_obj.rotation_euler=(1.5708,0,0)
     cube("Interview table",(0,-2.0,.92),(2.5,1.2,.1),walnut)
+    cube("Interview table left steel leg",(-1.03,-2.0,.47),(.075,.08,.87),steel)
+    cube("Interview table right steel leg",(1.03,-2.0,.47),(.075,.08,.87),steel)
+    # Long overhead architectural light bars visible in the cinematic reference.
+    luminous=cozo_rig.material("CELVANI | overhead soft white",(0.85,0.87,0.89))
+    for y in (-2.7,0.6,2.9):
+        cube("Boutique suspended strip light %.1f"%y,(0,y,4.65),(3.5,.12,.055),luminous)
+        bpy.ops.object.light_add(type="AREA",location=(0,y,4.5))
+        light=bpy.context.object
+        light.name="Boutique | softbox %.1f"%y
+        light.data.energy=440
+        light.data.shape="RECTANGLE"
+        light.data.size=3.5
+        light.data.size_y=.8
+    # Night street silhouettes beyond the glass give the walkaway a destination.
+    night=cozo_rig.material("Night street | charcoal",(0.018,.023,.038))
+    cube("Exterior dark skyline",(0,6.0,2.1),(12,.18,4.2),night)
+    for x in (-3.5,-1.8,1.9,3.3):
+        cube("Exterior distant building %s"%x,(x,5.75,1.4),(.8,.12,2.8),steel)
     for side in (-1,1):
         x=side*3.1
         cube("Rack top %s"%side,(x,2.25,2.1),(1.9,.08,.08),steel)
