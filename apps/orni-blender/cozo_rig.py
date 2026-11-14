@@ -81,7 +81,7 @@ def build():
         part(label+" | boot",(0,-.08,-.88),(.37,.61,.23),boot,leg_pivot)
         limbs[label]=(arm_pivot,leg_pivot)
     # Frames 1–45: seated pose; 46–90: stand; 91–180: walk.\n    # Parent local coordinates are explicit to keep limbs aligned to pivots.
-    animate(root,[(1,0),(84,0),(132,.40),(180,.40)],"location",2)
+    animate(root,[(1,-.40),(84,-.40),(132,0),(180,0)],"location",2)
     for label,(arm,leg) in limbs.items():
         sign=1 if label=="L" else -1
         animate(leg,[(1,-1.0),(84,-1.0),(132,0),(133,0),(143,sign*.34),(153,0),(163,-sign*.34),(180,0)])
