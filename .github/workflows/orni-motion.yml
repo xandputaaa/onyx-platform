@@ -22,8 +22,17 @@ jobs:
           pip install pillow numpy opencv-python-headless
       - name: Syntax-check Blender scripts
         run: python -m py_compile apps/orni-blender/automation.py apps/orni-blender/cozo_rig.py apps/orni-blender/cozo_boutique.py apps/orni-blender/test_cozo_scene.py apps/orni-blender/render_cozo_episode.py apps/orni-motion/cozo_postprocess.py
-      - name: Render COZO Blender proof frame
+      - name: Render all five COZO reference shots
+        env:
+          COZO_PREVIEW_DIR: ${{ github.workspace }}/cozo-preview-frames
         run: blender -b --python apps/orni-blender/test_cozo_scene.py
+      - name: Upload Blender preview frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cozo-five-shot-preview
+          path: cozo-preview-frames/*.png
+          if-no-files-found: warn
       - name: Verify COZO video finishing
         run: python apps/orni-motion/test_cozo_postprocess.py
       - name: Run 9:16 render smoke test
