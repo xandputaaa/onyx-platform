@@ -20,6 +20,17 @@ def build():
     walnut=cozo_rig.material("CELVANI | interview table",(0.18,0.12,0.08))
     cube("Boutique concrete floor",(0,0,-.17),(12,12,.3),concrete)
     cube("Boutique rear wall",(0,3,2.5),(12,.22,5),concrete)
+    glass=cozo_rig.material("CELVANI | tinted storefront",(0.065,0.085,0.11))
+    cube("Storefront left glass",(-2.3,4.3,2.15),(3.6,.045,4.2),glass)
+    cube("Storefront right glass",(2.3,4.3,2.15),(3.6,.045,4.2),glass)
+    cube("Storefront door mullion",(0,4.3,2.15),(.12,.10,4.2),steel)
+    cube("Storefront lintel",(0,4.3,4.25),(8,.10,.12),steel)
+    sign=bpy.data.curves.new("CELVANI sign text","FONT")
+    sign.body="CELVANI"; sign.size=.56; sign.extrude=.005
+    sign_obj=bpy.data.objects.new("CELVANI | wall sign",sign)
+    bpy.context.scene.collection.objects.link(sign_obj)
+    sign_obj.location=(-2.4,2.85,3.15)
+    sign_obj.rotation_euler=(1.5708,0,0)
     cube("Interview table",(0,-2.0,.92),(2.5,1.2,.1),walnut)
     for side in (-1,1):
         x=side*3.1
