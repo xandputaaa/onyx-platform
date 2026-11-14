@@ -26,7 +26,7 @@ export function createOnyxServer({token=process.env.ONYX_CORE_TOKEN}={}) {
       return res.end(readFileSync(new URL('../public/index.html',import.meta.url)));
     }
     if(req.method==='GET' && path==='/health')
-      return respond(200,{ok:true,service:'onyx-core',version:'0.1-foundation',modelConnected:providerConfiguration().enabled,voiceConnected:false,missionExecutionEnabled:false});
+      return respond(200,{ok:true,service:'onyx-core',version:'0.1-foundation',modelConnected:false,modelConfigured:providerConfiguration().enabled,voiceConnected:false,missionExecutionEnabled:false});
     if(path.startsWith('/api/')) {
       if(!token) return respond(503,{error:'ONYX_CORE_TOKEN_NOT_CONFIGURED'});
       if(!authorized(req.headers.authorization,token)) return respond(401,{error:'UNAUTHORIZED'});
