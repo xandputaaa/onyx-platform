@@ -93,7 +93,7 @@ def build():
     root=bpy.data.objects.new("COZO_ROOT | motion controller",None); bpy.context.collection.objects.link(root)
     root.empty_display_type="ARROWS"
     hips=part("HIPS", (0,0,1.05),(.56,.35,.26),denim,root)
-    torso=part("CELVANI PUFFER | torso",(0,0,1.82),(.98,.55,.88),black,root)
+    torso=garment_tube("CELVANI PUFFER | torso",(0,0,0),[(1.38,.46,.29),(1.48,.51,.34),(1.65,.53,.36),(1.84,.56,.38),(2.04,.55,.38),(2.23,.49,.33),(2.31,.34,.25)],black,root,sides=16,seed=7)
     # Connected ring-topology face, replacing the former UV sphere.
     # Face looks toward negative Y. Front surface contains two indented eye
     # cavities as real vertices, rather than two floating white eyeballs.
@@ -180,7 +180,12 @@ def build():
         garment_tube(label+" | puffer sleeve",(side*.04,0,0),[(-.77,.17,.20),(-.62,.22,.24),(-.45,.24,.26),(-.26,.25,.27),(-.08,.22,.25),(.04,.19,.22)],black,arm_pivot,seed=1 if side<0 else 2)
         for band in range(3):
             part(label+" | sleeve quilt %d"%band,(side*.04,-.246,-.18-band*.21),(.38,.035,.015),seam,arm_pivot)
-        part(label+" | gray hand",(side*.04,0,-.82),(.19,.19,.23),gray,arm_pivot)
+        palm=garment_tube(label+" | articulated palm",(side*.04,0,-.82),[(-.12,.082,.065),(.03,.094,.075),(.10,.080,.064)],gray,arm_pivot,sides=8)
+        for finger in range(5):
+            fx=side*.04+(finger-2)*.036
+            fy=-.018 if finger==0 else 0
+            length=.115 if finger in (0,4) else .16
+            digit=garment_tube(label+" | finger %d"%finger,(fx,fy,-.94),[(-length,.013,.016),(-length*.5,.017,.018),(0,.019,.020)],gray,arm_pivot,sides=6,seed=finger)
         leg_pivot=bpy.data.objects.new(label+"_HIP",None); bpy.context.collection.objects.link(leg_pivot)
         leg_pivot.parent=root; leg_pivot.location=(side*.23,0,1.02)
         garment_tube(label+" | wide denim",(0,0,0),[(-.90,.31,.30),(-.83,.33,.32),(-.73,.31,.32),(-.61,.30,.29),(-.48,.32,.30),(-.35,.30,.31),(-.20,.28,.29),(-.06,.27,.27),(.04,.26,.25)],denim,leg_pivot,seed=3 if side<0 else 4)
