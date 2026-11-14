@@ -213,6 +213,14 @@ def build():
         part(label+" | denim cuff",(0,-.012,-.82),(.54,.54,.12),denim,leg_pivot)
         part(label+" | boot",(0,-.08,-.88),(.37,.61,.23),boot,leg_pivot)
         limbs[label]=(arm_pivot,leg_pivot)
+    # Distressed denim: offset folded rings at the cuffs add piled fabric
+    # around the boot tops instead of a straight cylinder silhouette.
+    for side,label in [(-1,"L"),(1,"R")]:
+        leg=limbs[label][1]
+        for i,(z,rx,ry) in enumerate([(-.89,.35,.33),(-.83,.37,.35),(-.77,.34,.34)]):
+            garment_tube(label+" | stacked denim fold %d"%i,(0,0,0),
+                [(z-.034,rx*.94,ry*.94),(z,rx,ry),(z+.034,rx*.92,ry*.93)],
+                denim,leg,sides=12,seed=i+side*3)
     # Frames 1–45: seated pose; 46–90: stand; 91–180: walk.\n    # Parent local coordinates are explicit to keep limbs aligned to pivots.
     animate(root,[(1,-.40),(84,-.40),(132,0),(180,0)],"location",2)
     for label,(arm,leg) in limbs.items():
