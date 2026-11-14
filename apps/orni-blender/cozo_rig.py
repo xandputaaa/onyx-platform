@@ -67,8 +67,25 @@ def build():
     for i in range(4):
         part("CELVANI | puffer baffle %d"%i,(0,-.29,1.52+i*.19),(.94,.024,.018),seam,root)
     # Low-poly silhouette is intentionally a blockout, not a final likeness.
+    # Dark oval sockets embedded in the faceted face, rather than rectangular cubes.
     for side in (-1,1):
-        part("Eye %s"%side,(side*.115,-.232,2.58),(.115,.025,.13),eye,root)
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=12,ring_count=8,
+                                             location=(side*.115,-.235,2.60))
+        socket=bpy.context.object
+        socket.name="COZO | recessed oval eye %s"%side
+        socket.scale=(.065,.035,.083)
+        socket.data.materials.append(eye)
+        socket.parent=root
+        socket.location=(side*.115,-.235,2.60)
+    # Tapered chin plane is a deliberately simple mesh, to be replaced by a
+    # sculpted production mask once the five-shot render is visually checked.
+    bpy.ops.mesh.primitive_cone_add(vertices=8,radius1=.115,radius2=.22,
+                                    depth=.19,location=(0,-.075,2.27))
+    chin=bpy.context.object
+    chin.name="COZO | tapered mask chin"
+    chin.data.materials.append(gray)
+    chin.parent=root
+    chin.location=(0,-.075,2.27)
     limbs={}
     for side,label in [(-1,"L"),(1,"R")]:
         arm_pivot=bpy.data.objects.new(label+"_SHOULDER",None); bpy.context.collection.objects.link(arm_pivot)
