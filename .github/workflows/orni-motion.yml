@@ -1,0 +1,76 @@
+name: ORNI Motion smoke test
+on:
+  push:
+    branches:
+      - feature/orni-motion-storyboard
+  pull_request:
+    paths:
+      - 'apps/orni-motion/**'
+      - 'apps/orni-blender/**'
+      - '.github/workflows/orni-motion.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-numpy ffmpeg blender espeak libegl1 libgl1 libopengl0 libx11-6 libxext6 libxrender1 libxkbcommon0
+          python -m pip install --upgrade pip
+          pip install pillow numpy opencv-python-headless
+      - name: Syntax-check Blender scripts
+        run: python -m py_compile apps/orni-blender/automation.py apps/orni-blender/cozo_rig.py apps/orni-blender/cozo_boutique.py apps/orni-blender/test_cozo_scene.py apps/orni-blender/render_cozo_episode.py apps/orni-blender/render_cozo_hero.py apps/orni-blender/import_cozo_base.py apps/orni-blender/test_cozo_base_import.py apps/orni-motion/cozo_postprocess.py
+      - name: Check headless Blender startup
+        run: blender -b --python-exit-code 1 --python-expr 'import bpy; print("Blender ready:", bpy.app.version_string)'
+      - name: Validate skinned humanoid GLB import
+        run: blender -b --python-exit-code 1 --python apps/orni-blender/test_cozo_base_import.py
+      - name: Save editable COZO boutique Blender scene
+        run: PYTHONPATH=apps/orni-blender blender -b --python-exit-code 1 --python apps/orni-blender/cozo_boutique.py -- "${{ github.workspace }}/cozo-episode-001-scene.blend"
+      - name: Upload editable Blender scene
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cozo-episode-001-editable-blend
+          path: cozo-episode-001-scene.blend
+          if-no-files-found: error
+          retention-days: 14
+      - name: Render all five COZO reference shots
+        env:
+          COZO_PREVIEW_DIR: ${{ github.workspace }}/cozo-preview-frames
+        run: blender -b --python-exit-code 1 --python apps/orni-blender/test_cozo_scene.py
+      - name: Upload Blender preview frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cozo-five-shot-preview
+          path: cozo-preview-frames/*.png
+          if-no-files-found: warn
+      - name: Render COZO material hero frame
+        run: blender -b --python-exit-code 1 --python apps/orni-blender/render_cozo_hero.py -- "${{ github.workspace }}/cozo-hero.png"
+      - name: Upload COZO material hero frame
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cozo-material-hero-frame
+          path: cozo-hero.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Render complete COZO 15-second Blender blockout
+        run: blender -b --python-exit-code 1 --python apps/orni-blender/render_cozo_episode.py -- "${{ github.workspace }}/cozo-episode-001-blockout.mp4"
+      - name: Upload complete COZO MP4
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cozo-episode-001-animated-blockout
+          path: cozo-episode-001-blockout.mp4
+          if-no-files-found: error
+          retention-days: 7
+      - name: Verify COZO video finishing
+        run: python apps/orni-motion/test_cozo_postprocess.py
+      - name: Run 9:16 render smoke test
+        run: python -m unittest discover -s apps/orni-motion -p 'test_*.py' -v

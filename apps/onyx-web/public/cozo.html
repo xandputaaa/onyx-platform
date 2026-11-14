@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>COZO Motion — ONYX</title><meta name="theme-color" content="#0b0c0e">
+<style>
+:root{color-scheme:dark;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% -20%,#30353d,transparent 50%),#090a0c;color:#f3f4f5}
+header{padding:22px clamp(18px,5vw,60px);border-bottom:1px solid #2b2e33;display:flex;justify-content:space-between;gap:15px;align-items:center}
+a{color:#dfe3e7;text-decoration:none}.brand{letter-spacing:.24em;font-weight:700;font-size:13px}.muted{color:#9ca3ad}main{max-width:1160px;margin:auto;padding:44px 20px 90px}
+.eyebrow{font-size:11px;letter-spacing:.2em;color:#a4aab2}h1{font-size:clamp(36px,6vw,62px);font-weight:500;letter-spacing:-.05em;margin:10px 0}.lead{color:#a4aab2;max-width:650px}
+.grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(250px,.8fr);gap:15px;margin-top:30px}
+.card{background:linear-gradient(140deg,#171a1e,#101215);border:1px solid #2b3037;border-radius:18px;padding:20px}
+.stage{aspect-ratio:9/16;max-height:530px;max-width:300px;margin:16px auto;border:1px solid #3a414a;border-radius:15px;background:radial-gradient(ellipse at center,#262a30,#080a0c 80%);display:grid;place-content:center;text-align:center;padding:20px;color:#9da6b1}
+.stage strong{font-size:16px;color:#f1f2f3;font-weight:500}.stage p{font-size:12px;line-height:1.6}
+.row{display:flex;justify-content:space-between;gap:15px;padding:13px 0;border-bottom:1px solid #292d33;font-size:13px}
+button{border:0;background:#e8eaed;color:#111318;padding:12px 18px;border-radius:99px;font-weight:650;cursor:pointer}
+button:disabled{opacity:.4;cursor:not-allowed}button.secondary{background:#292d33;color:#e8eaed}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
+.status{font-size:12px;color:#b8c1c9}.note{font-size:12px;color:#9da6b1;line-height:1.6;margin-top:15px}
+pre{white-space:pre-wrap;word-break:break-word;font-size:12px;color:#c8d0d8;max-height:220px;overflow:auto}
+@media(max-width:760px){.grid{grid-template-columns:1fr}main{padding-top:28px}}
+</style></head><body>
+<header><a class="brand" href="/">ONYX</a><a href="/orni">ORNI STUDIO / BACK</a></header>
+<main><div class="eyebrow">THE HOUSE / ORNI / MOTION DEVELOPMENT</div>
+<h1>COZO / 001</h1><p class="lead">First Day at Work. A 15-second, 9:16 cinematic cutscene in the CELVANI boutique. The character and five camera beats follow the approved reference brief.</p>
+<div class="grid"><section class="card">
+<div class="eyebrow">BLENDER / PRODUCTION MONITOR</div>
+<div class="stage" id="stage"><div><strong>Render preview unavailable</strong><p>A real Blender frame or video will appear here after a worker completes production. This is not simulated footage.</p></div></div>
+<div class="actions"><button id="render" disabled>Render COZO Episode 001</button><button id="refresh" class="secondary">Check worker</button></div>
+<p class="note">Rendering may use compute resources. The button stays disabled until ONYX confirms the ORNI Blender worker is online. This page does not launch a new Railway service.</p>
+</section><aside class="card"><div class="eyebrow">PRODUCTION CHECKLIST</div>
+<div class="row"><span>Worker</span><span id="worker" class="status">Checking</span></div>
+<div class="row"><span>Animation</span><span class="muted">15 seconds / 12 fps</span></div>
+<div class="row"><span>Format</span><span class="muted">9:16 / H.264</span></div>
+<div class="row"><span>Dialogue</span><span class="muted">Manager + COZO</span></div>
+<div class="row"><span>Reference quality</span><span class="muted">Not approved</span></div>
+<div class="row"><span>Job</span><span id="job" class="status">Unknown</span></div>
+<p class="note" id="message">Checking the live ORNI connection.</p>
+<pre id="details" aria-live="polite"></pre>
+</aside></div></main>
+<script>
+const worker=document.getElementById("worker"),job=document.getElementById("job"),message=document.getElementById("message"),button=document.getElementById("render"),details=document.getElementById("details");
+async function check(){
+ button.disabled=true;worker.textContent="Checking";
+ try{
+  const r=await fetch("/api/orni/cozo/status",{cache:"no-store"});
+  const d=await r.json();const ready=r.ok&&d.connected===true;
+  worker.textContent=ready?"Online":"Offline";
+  message.textContent=ready?"Blender worker connected. Rendering requires confirmation.":(d.message||"No Blender worker is currently connected.");
+  button.disabled=!ready;
+  if(ready){const j=await fetch("/api/orni/cozo/job",{cache:"no-store"}).then(x=>x.json()).catch(()=>({}));job.textContent=j.status||"Idle";}
+ }catch{worker.textContent="Unavailable";message.textContent="Could not verify the Blender worker.";}
+}
+button.addEventListener("click",async()=>{
+ if(!confirm("Start a COZO Blender render using your connected compute resources?"))return;
+ button.disabled=true;message.textContent="Submitting confirmed render request.";
+ try{const r=await fetch("/api/orni/cozo/render",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({confirmRender:true})});const d=await r.json();details.textContent=JSON.stringify(d,null,2);message.textContent=r.ok?"Render job submitted; check worker for progress.":"Render not started: "+(d.error||"Upstream unavailable");}
+ catch{message.textContent="Render request failed; no success was confirmed.";}
+ await check();
+});
+document.getElementById("refresh").addEventListener("click",check);check();
+</script></body></html>
