@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { describeOnyxCore } from './manifest.js';
+import { respondToMessage } from './conversation.js';
 
 export function authorized(header, secret) {
   if (!secret || typeof header !== 'string' || !/^Bearer\s+\S+$/i.test(header)) return false;
@@ -9,7 +10,7 @@ export function authorized(header, secret) {
   return a.length === b.length && timingSafeEqual(a,b);
 }
 export function createOnyxServer({token=process.env.ONYX_CORE_TOKEN}={}) {
-  return http.createServer((req,res)=>{
+  return http.createServer(async(req,res)=>{
     res.setHeader('Content-Type','application/json; charset=utf-8');
     res.setHeader('Cache-Control','no-store');
     res.setHeader('X-Content-Type-Options','nosniff');
@@ -21,6 +22,15 @@ export function createOnyxServer({token=process.env.ONYX_CORE_TOKEN}={}) {
       if(!token) return respond(503,{error:'ONYX_CORE_TOKEN_NOT_CONFIGURED'});
       if(!authorized(req.headers.authorization,token)) return respond(401,{error:'UNAUTHORIZED'});
       if(req.method==='GET' && path==='/api/status') return respond(200,describeOnyxCore());
+      if(req.method==='POST' && path==='/api/conversation') {
+        let data='';
+        try {
+          for await(const chunk of req){data+=chunk;if(data.length>4096)return respond(413,{error:'PAYLOAD_TOO_LARGE'});}
+          const payload=JSON.parse(data);
+          const answer=respondToMessage(payload?.message);
+          return respond(answer.ok?200:400,answer);
+        } catch {return respond(400,{error:'INVALID_JSON'});}
+      }
       return respond(404,{error:'NOT_FOUND'});
     }
     return respond(404,{error:'NOT_FOUND'});
