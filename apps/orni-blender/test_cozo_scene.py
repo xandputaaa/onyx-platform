@@ -15,7 +15,7 @@ assert scene.frame_end-scene.frame_start+1==180
 assert scene.render.fps==12
 assert bpy.data.objects.get("COZO_ROOT | motion controller") is not None
 assert bpy.data.objects.get("Interview table") is not None
-assert bpy.data.objects.get("Manager head") is not None
+assert bpy.data.objects.get("Manager | faceted head placeholder") is not None
 assert bpy.data.objects.get("COZO | recessed oval eye -1") is not None
 assert bpy.data.objects.get("COZO | recessed oval eye 1") is not None
 assert bpy.data.objects.get("COZO | tapered mask chin") is not None
