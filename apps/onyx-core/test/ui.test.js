@@ -13,5 +13,12 @@ test('command center serves HTML with restrictive security headers',async()=>{
   assert.match(html,/ONYX/);
   assert.match(html,/Connection unverified/);
   assert.match(html,/prefers-reduced-motion/);
+  assert.match(html,/Start microphone/);
+  assert.match(html,/Stop microphone/);
+  assert.match(html,/Read reply aloud/);
+  assert.match(html,/Stop speaking/);
+  assert.match(html,/webkitSpeechRecognition/);
+  assert.match(html,/speechSynthesis/);
+  assert.match(html,/Review before sending/);
  }finally{await new Promise(resolve=>server.close(resolve));}
 });
