@@ -12,6 +12,20 @@ def cube(name, loc, dims, mat):
     obj.data.materials.append(mat)
     return obj
 
+def action_curves(obj):
+    """Support legacy and Blender 4.4+/5 layered Actions."""
+    action = getattr(getattr(obj, "animation_data", None), "action", None)
+    if action is None:
+        return []
+    curves = list(getattr(action, "fcurves", []) or [])
+    if curves:
+        return curves
+    for layer in getattr(action, "layers", []):
+        for strip in getattr(layer, "strips", []):
+            for bag in getattr(strip, "channelbags", []):
+                curves.extend(getattr(bag, "fcurves", []))
+    return curves
+
 def build():
     root=cozo_rig.build()
     concrete=cozo_rig.material("CELVANI | cool concrete",(0.24,0.245,0.25))
@@ -66,7 +80,7 @@ def build():
         cam.keyframe_insert(data_path="location",frame=frame)
         cam.keyframe_insert(data_path="rotation_euler",frame=frame)
     if cam.animation_data and cam.animation_data.action:
-        for fc in cam.animation_data.action.fcurves:
+        for fc in action_curves(cam):
             for kp in fc.keyframe_points:kp.interpolation="CONSTANT"
     scene.frame_start=1;scene.frame_end=180;scene.render.fps=12
     scene.render.resolution_x=720;scene.render.resolution_y=1280
