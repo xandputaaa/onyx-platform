@@ -131,7 +131,7 @@ def build():
     head.parent=root
     # Recognizable COZO head emblem: flat four-quadrant crash-test disc.
     # This is a geometry approximation pending the approved UV-textured head.
-    white=material("COZO | emblem off-white",(0.78,0.78,0.75))
+    yellow=material("COZO | crash target amber yellow",(0.79,0.61,0.06))
     for q in range(4):
         a=q*math.pi/2
         center=(.248,-.02,2.61)
@@ -144,8 +144,28 @@ def build():
         mesh.from_pydata(verts,[],[tuple(range(10))]); mesh.update()
         emblem=bpy.data.objects.new("COZO | temple crash-test quadrant %d"%q,mesh)
         bpy.context.collection.objects.link(emblem)
-        emblem.data.materials.append(black if q%2==0 else white)
+        emblem.data.materials.append(black if q%2==0 else yellow)
         emblem.parent=root
+    # PS2-style mottled low-resolution material color, not glossy plastic.
+    for fabric,scale,detail in ((gray,19,2),(black,24,3),(denim,16,4)):
+        nt=fabric.node_tree
+        bsdf=nt.nodes.get("Principled BSDF")
+        noise=nt.nodes.new("ShaderNodeTexNoise")
+        noise.inputs["Scale"].default_value=scale
+        noise.inputs["Detail"].default_value=detail
+        ramp=nt.nodes.new("ShaderNodeValToRGB")
+        if fabric==gray:
+            ramp.color_ramp.elements[0].color=(.34,.34,.35,1)
+            ramp.color_ramp.elements[1].color=(.66,.65,.66,1)
+        elif fabric==denim:
+            ramp.color_ramp.elements[0].color=(.24,.31,.39,1)
+            ramp.color_ramp.elements[1].color=(.60,.67,.70,1)
+        else:
+            ramp.color_ramp.elements[0].color=(.009,.010,.013,1)
+            ramp.color_ramp.elements[1].color=(.045,.047,.052,1)
+        nt.links.new(noise.outputs["Fac"],ramp.inputs["Fac"])
+        nt.links.new(ramp.outputs["Color"],bsdf.inputs["Base Color"])
+        bsdf.inputs["Roughness"].default_value=.94
     # Puffer seam strips establish a repeatable garment silhouette.
     seam=material("CELVANI | puffer seam",(0.035,0.037,0.04))
     for i in range(5):
