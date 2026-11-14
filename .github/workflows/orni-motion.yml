@@ -24,9 +24,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install pillow numpy opencv-python-headless
       - name: Syntax-check Blender scripts
-        run: python -m py_compile apps/orni-blender/automation.py apps/orni-blender/cozo_rig.py apps/orni-blender/cozo_boutique.py apps/orni-blender/test_cozo_scene.py apps/orni-blender/render_cozo_episode.py apps/orni-blender/render_cozo_hero.py apps/orni-blender/import_cozo_base.py apps/orni-motion/cozo_postprocess.py
+        run: python -m py_compile apps/orni-blender/automation.py apps/orni-blender/cozo_rig.py apps/orni-blender/cozo_boutique.py apps/orni-blender/test_cozo_scene.py apps/orni-blender/render_cozo_episode.py apps/orni-blender/render_cozo_hero.py apps/orni-blender/import_cozo_base.py apps/orni-blender/test_cozo_base_import.py apps/orni-motion/cozo_postprocess.py
       - name: Check headless Blender startup
         run: blender -b --python-exit-code 1 --python-expr 'import bpy; print("Blender ready:", bpy.app.version_string)'
+      - name: Validate skinned humanoid GLB import
+        run: blender -b --python-exit-code 1 --python apps/orni-blender/test_cozo_base_import.py
       - name: Render all five COZO reference shots
         env:
           COZO_PREVIEW_DIR: ${{ github.workspace }}/cozo-preview-frames
