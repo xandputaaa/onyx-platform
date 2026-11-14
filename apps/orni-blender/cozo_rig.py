@@ -38,7 +38,13 @@ def build():
     root.empty_display_type="ARROWS"
     hips=part("HIPS", (0,0,1.05),(.56,.35,.26),denim,root)
     torso=part("CELVANI PUFFER | torso",(0,0,1.82),(.98,.55,.88),black,root)
-    head=part("COZO | angular gray head",(0,-.02,2.55),(.48,.40,.59),gray,root)
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=10,ring_count=6,location=(0,-.02,2.55))
+    head=bpy.context.object
+    head.name="COZO | faceted matte gray mask blockout"
+    head.scale=(.27,.225,.36)
+    head.data.materials.append(gray)
+    head.parent=root
+    head.location=(0,-.02,2.55)
     # Recognizable COZO head emblem: flat four-quadrant crash-test disc.
     # This is a geometry approximation pending the approved UV-textured head.
     white=material("COZO | emblem off-white",(0.78,0.78,0.75))
@@ -75,12 +81,12 @@ def build():
         part(label+" | boot",(0,-.08,-.88),(.37,.61,.23),boot,leg_pivot)
         limbs[label]=(arm_pivot,leg_pivot)
     # Frames 1–45: seated pose; 46–90: stand; 91–180: walk.\n    # Parent local coordinates are explicit to keep limbs aligned to pivots.
-    animate(root,[(1,0),(45,0),(90,.40),(180,.40)],"location",2)
+    animate(root,[(1,0),(84,0),(132,.40),(180,.40)],"location",2)
     for label,(arm,leg) in limbs.items():
         sign=1 if label=="L" else -1
-        animate(leg,[(1,-1.0),(45,-1.0),(90,0),(91,0),(113,sign*.34),(135,0),(157,-sign*.34),(180,0)])
-        animate(arm,[(1,-.12),(45,-.12),(90,0),(91,0),(113,-sign*.20),(135,0),(157,sign*.20),(180,0)])
-    animate(root,[(1,0),(90,0),(180,-2.8)],"location",1)
+        animate(leg,[(1,-1.0),(84,-1.0),(132,0),(133,0),(143,sign*.34),(153,0),(163,-sign*.34),(180,0)])
+        animate(arm,[(1,-.12),(84,-.12),(132,0),(133,0),(143,-sign*.20),(153,0),(163,sign*.20),(180,0)])
+    animate(root,[(1,0),(132,0),(133,0),(168,3.8),(180,3.8)],"location",1)
     scene=bpy.context.scene; scene.frame_start=1; scene.frame_end=180; scene.render.fps=12
     scene.render.resolution_x=720; scene.render.resolution_y=1280; scene.render.resolution_percentage=100
     # Reference camera and light for visual inspection, not a finished boutique scene.
