@@ -16,6 +16,11 @@ assert scene.render.fps==12
 assert bpy.data.objects.get("COZO_ROOT | motion controller") is not None
 assert bpy.data.objects.get("Interview table") is not None
 assert bpy.data.objects.get("Manager head") is not None
+assert bpy.data.objects.get("COZO | recessed oval eye -1") is not None
+assert bpy.data.objects.get("COZO | recessed oval eye 1") is not None
+assert bpy.data.objects.get("COZO | tapered mask chin") is not None
+assert bpy.data.objects.get("CELVANI | wall sign") is not None
+assert bpy.data.objects.get("Storefront left glass") is not None
 assert scene.camera.animation_data is not None
 for name in ("L_SHOULDER","R_SHOULDER","L_HIP","R_HIP"):
     obj=bpy.data.objects.get(name)
