@@ -8,7 +8,8 @@ WORKDIR /workspace
 COPY start.sh /usr/local/bin/orni-blender-start
 COPY automation.py /workspace/automation.py
 COPY cozo_rig.py /workspace/cozo_rig.py
-RUN python3 -m py_compile /workspace/automation.py /workspace/cozo_rig.py
+COPY cozo_boutique.py /workspace/cozo_boutique.py
+RUN python3 -m py_compile /workspace/automation.py /workspace/cozo_rig.py /workspace/cozo_boutique.py
 COPY viewer.html /workspace/viewer.html
 RUN chmod +x /usr/local/bin/orni-blender-start
 ENV DISPLAY=:1 LIBGL_ALWAYS_SOFTWARE=1
