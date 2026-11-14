@@ -20,7 +20,7 @@ assert scene.camera.animation_data is not None
 for name in ("L_SHOULDER","R_SHOULDER","L_HIP","R_HIP"):
     obj=bpy.data.objects.get(name)
     assert obj and obj.animation_data, name
-scene.render.engine="BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in {x.identifier for x in bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items} else "BLENDER_WORKBENCH"
+scene.render.engine="BLENDER_WORKBENCH"
 scene.render.resolution_percentage=25
 scene.render.image_settings.file_format="PNG"
 with tempfile.TemporaryDirectory() as d:
