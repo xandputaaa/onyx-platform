@@ -161,13 +161,13 @@ def build():
     # Dark oval sockets embedded in the faceted face, rather than rectangular cubes.
     for side in (-1,1):
         bpy.ops.mesh.primitive_uv_sphere_add(segments=12,ring_count=8,
-                                             location=(side*.115,-.235,2.60))
+                                             location=(side*.115,-.175,2.60))
         socket=bpy.context.object
         socket.name="COZO | recessed oval eye %s"%side
-        socket.scale=(.065,.035,.083)
+        socket.scale=(.052,.014,.070)
         socket.data.materials.append(eye)
         socket.parent=root
-        socket.location=(side*.115,-.235,2.60)
+        socket.location=(side*.115,-.175,2.60)
     # Chin is now part of the connected mask mesh. A non-rendering locator
     # retains compatibility with the original scene validation contract.
     chin=bpy.data.objects.new("COZO | tapered mask chin",None)
