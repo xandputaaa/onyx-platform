@@ -1,0 +1,5 @@
+import test from "node:test";import assert from "node:assert/strict";import {createSimulatedDesk,validateDeskPlane,placeOnDesk,canAnchor,deskStatus} from "./deskspace.mjs";
+test("simulated horizontal desk is valid",()=>assert.equal(validateDeskPlane(createSimulatedDesk()),true));
+test("rejects tilted and invalid surfaces",()=>{assert.equal(validateDeskPlane({...createSimulatedDesk(),normal:[1,0,0]}),false);assert.equal(validateDeskPlane({...createSimulatedDesk(),width:0}),false);assert.equal(validateDeskPlane(null),false);});
+test("desk coordinates map to physical meter dimensions",()=>{const p=createSimulatedDesk(1.2,.8);assert.deepEqual(placeOnDesk(p,.5,.5),[0,.75,-1]);assert.deepEqual(placeOnDesk(p,1,1),[.6,.75,-.6]);});
+test("anchor requires actual tracking and sufficient confidence",()=>{const plane=createSimulatedDesk();assert.equal(canAnchor({tracking:false,confidence:1,plane}),false);assert.equal(canAnchor({tracking:true,confidence:.79,plane}),false);assert.equal(deskStatus({tracking:true,confidence:.9,plane}),"anchored");assert.equal(deskStatus({tracking:false,confidence:0,plane}),"unavailable");});
