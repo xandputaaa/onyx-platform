@@ -5,6 +5,20 @@ Usage: blender -b --python cozo_rig.py -- /tmp/cozo_rig.blend
 import bpy, math, sys
 from mathutils import Vector
 
+def action_curves(obj):
+    """Support legacy and Blender 4.4+/5 layered Actions."""
+    action = getattr(getattr(obj, "animation_data", None), "action", None)
+    if action is None:
+        return []
+    curves = list(getattr(action, "fcurves", []) or [])
+    if curves:
+        return curves
+    for layer in getattr(action, "layers", []):
+        for strip in getattr(layer, "strips", []):
+            for bag in getattr(strip, "channelbags", []):
+                curves.extend(getattr(bag, "fcurves", []))
+    return curves
+
 def material(name, rgb):
     m=bpy.data.materials.new(name); m.diffuse_color=(*rgb,1); m.use_nodes=True
     m.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value=(*rgb,1)
@@ -24,7 +38,7 @@ def animate(obj, frames, field="rotation_euler", index=0):
         getattr(obj,field)[index]=value
         obj.keyframe_insert(data_path=field,index=index,frame=frame)
     if obj.animation_data and obj.animation_data.action:
-        for curve in obj.animation_data.action.fcurves:
+        for curve in action_curves(obj):
             for point in curve.keyframe_points: point.interpolation="BEZIER"
 
 def build():
