@@ -36,6 +36,16 @@ jobs:
           name: cozo-five-shot-preview
           path: cozo-preview-frames/*.png
           if-no-files-found: warn
+      - name: Render complete COZO 15-second Blender blockout
+        run: blender -b --python apps/orni-blender/render_cozo_episode.py -- "${{ github.workspace }}/cozo-episode-001-blockout.mp4"
+      - name: Upload complete COZO MP4
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cozo-episode-001-animated-blockout
+          path: cozo-episode-001-blockout.mp4
+          if-no-files-found: error
+          retention-days: 7
       - name: Verify COZO video finishing
         run: python apps/orni-motion/test_cozo_postprocess.py
       - name: Run 9:16 render smoke test
