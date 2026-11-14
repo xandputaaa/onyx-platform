@@ -29,6 +29,12 @@ def part(name, location, scale, mat, parent=None):
     obj=bpy.context.object; obj.name=name
     obj.dimensions=scale; bpy.ops.object.transform_apply(location=False,rotation=False,scale=True)
     obj.data.materials.append(mat)
+    # Beveled, weighted edges preserve PS2 facets without raw cuboid silhouettes.
+    if name not in ("HIPS",):
+        bevel=obj.modifiers.new("Soft garment edge","BEVEL")
+        bevel.width=min(scale)*.16
+        bevel.segments=2
+        obj.modifiers.new("Weighted normals","WEIGHTED_NORMAL")
     if parent:
         obj.parent=parent; obj.location=location
     return obj
@@ -48,6 +54,17 @@ def build():
     denim=material("CELVANI | washed light blue denim",(0.42,0.52,0.62))
     boot=material("COZO | matte black lug boot",(0.025,0.026,0.029))
     eye=material("COZO | black recessed eyes",(0.002,0.002,0.003))
+    # Subtle procedural fabric breakup avoids flat plastic color.
+    for fabric, scale, strength in ((black,85,0.11),(denim,38,0.17)):
+        nodes=fabric.node_tree.nodes
+        tex=nodes.new("ShaderNodeTexNoise")
+        tex.inputs["Scale"].default_value=scale
+        bump=nodes.new("ShaderNodeBump")
+        bump.inputs["Strength"].default_value=strength
+        bump.inputs["Distance"].default_value=.012
+        fabric.node_tree.links.new(tex.outputs["Fac"],bump.inputs["Height"])
+        fabric.node_tree.links.new(bump.outputs["Normal"],nodes["Principled BSDF"].inputs["Normal"])
+        nodes["Principled BSDF"].inputs["Roughness"].default_value=.88
     root=bpy.data.objects.new("COZO_ROOT | motion controller",None); bpy.context.collection.objects.link(root)
     root.empty_display_type="ARROWS"
     hips=part("HIPS", (0,0,1.05),(.56,.35,.26),denim,root)
@@ -78,8 +95,15 @@ def build():
         emblem.parent=root
     # Puffer seam strips establish a repeatable garment silhouette.
     seam=material("CELVANI | puffer seam",(0.035,0.037,0.04))
-    for i in range(4):
-        part("CELVANI | puffer baffle %d"%i,(0,-.29,1.52+i*.19),(.94,.024,.018),seam,root)
+    for i in range(5):
+        z=1.47+i*.155
+        # Quilted front volume, not painted stripes.
+        part("CELVANI | quilted front panel %d"%i,(0,-.29,z),(.96,.18,.135),black,root)
+        part("CELVANI | horizontal stitch %d"%i,(0,-.391,z+.071),(.93,.009,.008),seam,root)
+    # Raised collar/hood rim around COZO's neck.
+    for side in (-1,1):
+        part("CELVANI | hood shoulder rim %s"%side,(side*.32,-.045,2.30),(.32,.38,.25),black,root)
+    part("CELVANI | collar under chin",(0,-.25,2.25),(.52,.22,.18),black,root)
     # Low-poly silhouette is intentionally a blockout, not a final likeness.
     # Dark oval sockets embedded in the faceted face, rather than rectangular cubes.
     for side in (-1,1):
@@ -104,11 +128,14 @@ def build():
     for side,label in [(-1,"L"),(1,"R")]:
         arm_pivot=bpy.data.objects.new(label+"_SHOULDER",None); bpy.context.collection.objects.link(arm_pivot)
         arm_pivot.parent=root; arm_pivot.location=(side*.57,0,2.08)
-        part(label+" | puffer sleeve",(side*.04,0,-.37),(.31,.42,.74),black,arm_pivot)
+        part(label+" | puffer sleeve",(side*.04,0,-.37),(.40,.47,.79),black,arm_pivot)
+        for band in range(3):
+            part(label+" | sleeve quilt %d"%band,(side*.04,-.246,-.18-band*.21),(.38,.035,.015),seam,arm_pivot)
         part(label+" | gray hand",(side*.04,0,-.82),(.19,.19,.23),gray,arm_pivot)
         leg_pivot=bpy.data.objects.new(label+"_HIP",None); bpy.context.collection.objects.link(leg_pivot)
         leg_pivot.parent=root; leg_pivot.location=(side*.23,0,1.02)
-        part(label+" | wide denim",(0,0,-.43),(.43,.44,.88),denim,leg_pivot)
+        part(label+" | wide denim",(0,0,-.43),(.52,.51,.88),denim,leg_pivot)
+        part(label+" | denim cuff",(0,-.012,-.82),(.54,.54,.12),denim,leg_pivot)
         part(label+" | boot",(0,-.08,-.88),(.37,.61,.23),boot,leg_pivot)
         limbs[label]=(arm_pivot,leg_pivot)
     # Frames 1–45: seated pose; 46–90: stand; 91–180: walk.\n    # Parent local coordinates are explicit to keep limbs aligned to pivots.
