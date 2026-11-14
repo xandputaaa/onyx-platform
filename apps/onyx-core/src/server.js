@@ -34,7 +34,7 @@ export function createOnyxServer({token=process.env.ONYX_CORE_TOKEN,missionStore
       if(req.method==='GET' && path==='/api/status') return respond(200,describeOnyxCore());
       if(req.method==='GET' && path==='/api/missions')return respond(200,{missions:missionStore.list(),persistent:false,executionEnabled:false});
       if(req.method==='GET' && path==='/api/missions/audit')return respond(200,{events:missionStore.audit()});
-      if(req.method==='POST' && (path==='/api/missions'||/^\\/api\\/missions\\/[0-9a-f-]+\\/transition$/.test(path))){
+      if(req.method==='POST' && (path==='/api/missions'||/^\/api\/missions\/[0-9a-f-]+\/transition$/.test(path))){
         let data='';
         try{
           for await(const chunk of req){data+=chunk;if(data.length>4096)return respond(413,{error:'PAYLOAD_TOO_LARGE'});}
