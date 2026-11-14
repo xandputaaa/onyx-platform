@@ -43,11 +43,17 @@ def build():
     # This is a geometry approximation pending the approved UV-textured head.
     white=material("COZO | emblem off-white",(0.78,0.78,0.75))
     for q in range(4):
-        angle=q*math.pi/2
-        bpy.ops.mesh.primitive_cylinder_add(vertices=4,radius=.085,depth=.008,location=(.246,-.02,2.61))
-        emblem=bpy.context.object
-        emblem.name="COZO | temple crash-test quadrant %d"%q
-        emblem.rotation_euler=(math.pi/2,0,angle)
+        a=q*math.pi/2
+        center=(.248,-.02,2.61)
+        radius=.095
+        verts=[center]
+        for step in range(9):
+            theta=a+(math.pi/2)*step/8
+            verts.append((center[0],center[1]+radius*math.cos(theta),center[2]+radius*math.sin(theta)))
+        mesh=bpy.data.meshes.new("COZO emblem wedge mesh %d"%q)
+        mesh.from_pydata(verts,[],[tuple(range(10))]); mesh.update()
+        emblem=bpy.data.objects.new("COZO | temple crash-test quadrant %d"%q,mesh)
+        bpy.context.collection.objects.link(emblem)
         emblem.data.materials.append(black if q%2==0 else white)
         emblem.parent=root
     # Puffer seam strips establish a repeatable garment silhouette.
