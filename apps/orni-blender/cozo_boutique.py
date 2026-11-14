@@ -101,7 +101,7 @@ def build():
         (1,(1.35,-1.1,2.35),(0,-3.55,1.95)),       # manager at desk, shot from COZO side
         (37,(2.55,-3.25,2.85),(0,0,2.08)),       # COZO mask and puffer
         (85,(3.5,-6.4,3.0),(0,0,1.5)),        # standing from chair
-        (133,(.8,-1.0,2.85),(0,3.0,1.55)),       # rear view toward glass storefront
+        (133,(3.6,-5.8,3.1),(0,2.2,1.55)),       # rear view toward glass storefront
         (169,(1.0,-1.15,2.4),(0,-3.55,2.15)),    # manager reaction from front
     ]
     for frame,loc,target in shots:
