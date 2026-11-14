@@ -245,6 +245,7 @@ app.get("/api/orni/cozo/status", async (req,res) => {
 });
 app.get("/api/orni/cozo/job", (req,res) => orniForward(req,res,"/api/orni/blender/job-status"));
 app.post("/api/orni/cozo/render", async (req,res) => {
+  if(process.env.ONYX_COZO_RENDER_ENABLED!=="true") return res.status(503).json({error:"COZO rendering is disabled until the worker and access controls are verified."});
   if(req.body?.confirmRender!==true) return res.status(400).json({error:"Explicit render confirmation required."});
   if(!process.env.ORNI_ACCESS_TOKEN) return res.status(503).json({error:"ORNI authentication is not configured."});
   const status=await fetch(orniBase+"/api/orni/blender/status",{
