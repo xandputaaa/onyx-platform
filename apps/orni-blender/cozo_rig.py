@@ -1,0 +1,80 @@
+"""COZO rigged proof-of-concept for Blender 4.x, with walk/stand/sit actions.
+Procedural blockout only: NOT the approved final production mesh.
+Usage: blender -b --python cozo_rig.py -- /tmp/cozo_rig.blend
+"""
+import bpy, math, sys
+from mathutils import Vector
+
+def material(name, rgb):
+    m=bpy.data.materials.new(name); m.diffuse_color=(*rgb,1); m.use_nodes=True
+    m.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value=(*rgb,1)
+    return m
+
+def part(name, location, scale, mat, parent=None):
+    bpy.ops.mesh.primitive_cube_add(size=1,location=location)
+    obj=bpy.context.object; obj.name=name
+    obj.dimensions=scale; bpy.ops.object.transform_apply(location=False,rotation=False,scale=True)
+    obj.data.materials.append(mat)
+    if parent:
+        obj.parent=parent; obj.matrix_parent_inverse=parent.matrix_world.inverted()
+    return obj
+
+def animate(obj, frames, field="rotation_euler", index=0):
+    for frame,value in frames:
+        getattr(obj,field)[index]=value
+        obj.keyframe_insert(data_path=field,index=index,frame=frame)
+    if obj.animation_data and obj.animation_data.action:
+        for curve in obj.animation_data.action.fcurves:
+            for point in curve.keyframe_points: point.interpolation="BEZIER"
+
+def build():
+    bpy.ops.object.select_all(action="SELECT"); bpy.ops.object.delete(use_global=False)
+    gray=material("COZO | pale matte faceted gray",(0.59,0.60,0.62))
+    black=material("CELVANI | quilted charcoal black",(0.017,0.019,0.022))
+    denim=material("CELVANI | washed light blue denim",(0.42,0.52,0.62))
+    boot=material("COZO | matte black lug boot",(0.025,0.026,0.029))
+    eye=material("COZO | black recessed eyes",(0.002,0.002,0.003))
+    root=bpy.data.objects.new("COZO_ROOT | motion controller",None); bpy.context.collection.objects.link(root)
+    root.empty_display_type="ARROWS"
+    hips=part("HIPS", (0,0,1.05),(.56,.35,.26),denim,root)
+    torso=part("CELVANI PUFFER | torso",(0,0,1.82),(.98,.55,.88),black,root)
+    head=part("COZO | angular gray head",(0,-.02,2.55),(.48,.40,.59),gray,root)
+    # Low-poly silhouette is intentionally a blockout, not a final likeness.
+    for side in (-1,1):
+        part("Eye %s"%side,(side*.115,-.232,2.58),(.115,.025,.13),eye,root)
+    limbs={}
+    for side,label in [(-1,"L"),(1,"R")]:
+        arm_pivot=bpy.data.objects.new(label+"_SHOULDER",None); bpy.context.collection.objects.link(arm_pivot)
+        arm_pivot.parent=root; arm_pivot.location=(side*.57,0,2.08)
+        part(label+" | puffer sleeve",(side*.04,0,-.37),(.31,.42,.74),black,arm_pivot)
+        part(label+" | gray hand",(side*.04,0,-.82),(.19,.19,.23),gray,arm_pivot)
+        leg_pivot=bpy.data.objects.new(label+"_HIP",None); bpy.context.collection.objects.link(leg_pivot)
+        leg_pivot.parent=root; leg_pivot.location=(side*.23,0,1.02)
+        part(label+" | wide denim",(0,0,-.43),(.43,.44,.88),denim,leg_pivot)
+        part(label+" | boot",(0,-.08,-.88),(.37,.61,.23),boot,leg_pivot)
+        limbs[label]=(arm_pivot,leg_pivot)
+    # Frames 1–45: sitting posture; 46–90: rise; 91–180: walk cycle.
+    animate(root,[(1,0),(45,0),(90,.40),(180,.40)],"location",2)
+    for label,(arm,leg) in limbs.items():
+        sign=1 if label=="L" else -1
+        animate(leg,[(1,-1.0),(45,-1.0),(90,0),(91,0),(113,sign*.34),(135,0),(157,-sign*.34),(180,0)])
+        animate(arm,[(1,-.12),(45,-.12),(90,0),(91,0),(113,-sign*.20),(135,0),(157,sign*.20),(180,0)])
+    animate(root,[(1,0),(90,0),(180,-2.8)],"location",1)
+    scene=bpy.context.scene; scene.frame_start=1; scene.frame_end=180; scene.render.fps=12
+    scene.render.resolution_x=720; scene.render.resolution_y=1280; scene.render.resolution_percentage=100
+    # Reference camera and light for visual inspection, not a finished boutique scene.
+    bpy.ops.object.camera_add(location=(4,-8,3.2))
+    cam=bpy.context.object
+    direction=Vector((0,0,1.45))-cam.location
+    cam.rotation_euler=direction.to_track_quat("-Z","Y").to_euler()
+    scene.camera=cam
+    bpy.ops.object.light_add(type="AREA",location=(1,-3,5))
+    bpy.context.object.data.energy=650; bpy.context.object.data.shape="DISK"; bpy.context.object.data.size=5
+    return root
+
+if __name__=="__main__":
+    build()
+    args=sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
+    output=args[0] if args else "/tmp/cozo_rig.blend"
+    bpy.ops.wm.save_as_mainfile(filepath=output)
+    print("COZO rig proof of concept saved:",output)
