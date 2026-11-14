@@ -6,6 +6,7 @@ import json, subprocess, sys, tempfile
 from pathlib import Path
 import bpy
 import cozo_boutique
+import cozo_postprocess
 
 def render(output):
     result=cozo_boutique.build()
@@ -33,6 +34,16 @@ def render(output):
             "-c:v","libx264","-preset","veryfast","-crf","22",
             "-pix_fmt","yuv420p","-movflags","+faststart","-an",str(output)]
         subprocess.run(command,check=True,timeout=600)
+        raw=output.with_name(output.stem+"_raw.mp4")
+        output.replace(raw)
+        try:
+            cozo_postprocess.run(raw,output)
+        except Exception:
+            if output.exists(): output.unlink()
+            raw.replace(output)
+            raise
+        finally:
+            if raw.exists(): raw.unlink()
     if not output.is_file() or output.stat().st_size<2048:
         raise RuntimeError("COZO episode MP4 missing or empty")
     probe=json.loads(subprocess.check_output(["ffprobe","-v","error","-show_entries",
@@ -43,7 +54,7 @@ def render(output):
         raise RuntimeError("COZO MP4 dimensions or duration invalid: "+str(probe))
     return {"ok":True,"file":str(output),"durationSeconds":duration,
             "width":360,"height":640,"fps":12,"frames":expected,
-            "mode":"blender_blockout_animation","audio":False,
+            "mode":"blender_blockout_animation","audio":True,"captions":True,
             "note":"15-second procedural 3D blockout; final COZO assets and voice pending"}
 
 if __name__=="__main__":
