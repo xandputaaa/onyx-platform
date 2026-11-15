@@ -18,3 +18,88 @@
 
 /* Explicit luminous search effect from supplied glowing glass reference */
 .life-glow-search{position:relative;padding:2px;border-radius:24px;margin:4px 0 23px;background:linear-gradient(110deg,#5ce7df 0%,#5c8dff 25%,#db54c6 55%,#f66a9a 76%,#6b61ff 100%);box-shadow:0 0 18px rgba(190,73,191,.36),0 0 38px rgba(121,73,225,.21),0 18px 43px rgba(255,100,84,.14);isolation:isolate;animation:lifeSearchBreathe 6s ease-in-out infinite alternate}.life-glow-search:before{content:'';position:absolute;inset:0;border-radius:inherit;background:inherit;filter:blur(22px);opacity:.68;z-index:-1}.life-glow-inner{min-height:66px;border-radius:22px;display:flex;align-items:center;gap:12px;background:rgba(5,7,12,.96);padding:10px 12px 10px 20px}.life-glow-inner>span{font-size:24px;color:#9ee9f5}.life .life-glow-inner input{flex:1;min-width:0;border:0;background:transparent;color:#edf3ff;font-size:16px;padding:9px 0;outline:0}.life .life-glow-inner input::placeholder{color:#99a6c3}.life .life-glow-inner button{flex-shrink:0;background:rgba(69,78,115,.4);border:1px solid rgba(167,180,229,.26);color:#e9edff}.life-glow-inner:focus-within{box-shadow:inset 0 0 22px rgba(96,118,216,.15);border-radius:22px}@keyframes lifeSearchBreathe{from{box-shadow:0 0 15px rgba(190,73,191,.27),0 0 35px rgba(121,73,225,.16),0 18px 40px rgba(255,100,84,.1)}to{box-shadow:0 0 27px rgba(77,186,244,.35),0 0 54px rgba(193,73,225,.27),0 18px 50px rgba(255,100,84,.2)}}@media(prefers-reduced-motion:reduce){.life-glow-search{animation:none}}@media(max-width:380px){.life-glow-inner{gap:6px;padding-left:12px}.life .life-glow-inner button{padding:10px 8px}}
+
+/* ONYX Life OS — unified liquid-light ambient field and synchronized glass/search palette.
+   Shared hue cycle keeps ambient wallpaper pastel and search rim vibrant. */
+.life{
+ --life-hue-shift:0deg;
+ position:relative;
+ isolation:isolate;
+ min-height:calc(100vh - 110px);
+ padding-bottom:26px;
+}
+.life::before{
+ content:"";
+ position:absolute;
+ z-index:-2;
+ pointer-events:none;
+ inset:-85px -28px -60px;
+ height:auto;
+ background:
+ radial-gradient(ellipse 85% 38% at 5% 12%,rgba(255,127,194,.31),transparent 72%),
+ radial-gradient(ellipse 78% 37% at 92% 23%,rgba(111,177,255,.32),transparent 70%),
+ radial-gradient(ellipse 72% 35% at 48% 48%,rgba(191,127,255,.27),transparent 73%),
+ radial-gradient(ellipse 83% 36% at 15% 72%,rgba(255,186,146,.27),transparent 72%),
+ radial-gradient(ellipse 80% 38% at 88% 94%,rgba(102,218,221,.22),transparent 73%);
+ background-color:#10121d;
+ background-size:135% 130%;
+ background-position:0% 0%;
+ filter:blur(34px) saturate(110%);
+ opacity:.82;
+ transform:translateZ(0);
+ animation:onyxLiquidFlow 24s ease-in-out infinite alternate,onyxSharedHue 36s linear infinite;
+}
+.life::after{
+ content:"";
+ position:absolute;
+ inset:-75px -20px 0;
+ z-index:-1;
+ pointer-events:none;
+ background:linear-gradient(180deg,rgba(6,8,13,.27),rgba(7,9,15,.15) 38%,rgba(6,8,14,.4));
+}
+.life .life-glow-search{
+ position:relative;
+ background:linear-gradient(110deg,#65f5e9 0%,#71b4ff 25%,#e18dff 49%,#ff7db4 75%,#ffd29c 100%);
+ animation:onyxSearchPulse 7s ease-in-out infinite alternate,onyxSharedHue 36s linear infinite;
+ box-shadow:0 0 18px rgba(225,141,255,.39),0 0 44px rgba(108,176,255,.24),0 15px 48px rgba(255,147,186,.16);
+}
+.life .life-glow-search::before{
+ background:inherit;
+ opacity:.62;
+ filter:blur(22px);
+}
+.life .life-glow-inner{
+ background:rgba(9,11,20,.92);
+ backdrop-filter:blur(22px);
+ -webkit-backdrop-filter:blur(22px);
+}
+.life .life-hero,.life .life-card{
+ background:linear-gradient(130deg,rgba(19,23,36,.75),rgba(10,12,22,.81) 56%,rgba(21,21,35,.72));
+ border-color:rgba(221,225,255,.23);
+ box-shadow:0 20px 54px rgba(0,0,0,.25),0 0 24px rgba(151,140,247,.10),inset 0 1px 0 rgba(255,255,255,.13);
+ backdrop-filter:blur(30px) saturate(125%);
+ -webkit-backdrop-filter:blur(30px) saturate(125%);
+}
+.life .life-card::before,.life .life-hero::before{
+ background:linear-gradient(145deg,rgba(255,255,255,.09),transparent 31%),radial-gradient(ellipse at 90% 10%,rgba(152,166,255,.10),transparent 53%);
+}
+@keyframes onyxLiquidFlow{
+ 0%{background-position:0% 10%;transform:translate3d(-1%,0,0) scale(1)}
+ 50%{background-position:95% 50%;transform:translate3d(1%,1%,0) scale(1.045)}
+ 100%{background-position:20% 100%;transform:translate3d(-1%,2%,0) scale(1.015)}
+}
+@keyframes onyxSharedHue{
+ 0%,100%{filter:hue-rotate(0deg)}
+ 50%{filter:hue-rotate(34deg)}
+}
+@keyframes onyxSearchPulse{
+ from{box-shadow:0 0 15px rgba(225,141,255,.28),0 0 32px rgba(108,176,255,.20),0 15px 38px rgba(255,147,186,.11)}
+ to{box-shadow:0 0 27px rgba(225,141,255,.48),0 0 56px rgba(108,176,255,.34),0 15px 55px rgba(255,147,186,.20)}
+}
+@media(max-width:600px){
+ .life::before{inset:-40px -12px -45px;filter:blur(26px) saturate(110%);opacity:.79}
+ .life .life-card,.life .life-hero{backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+}
+@media(prefers-reduced-motion:reduce){
+ .life::before,.life .life-glow-search{animation:none!important}
+}
