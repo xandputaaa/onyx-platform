@@ -1,20 +1,18 @@
 {
-  "name": "onyx-platform-orni-api",
-  "version": "0.1.0",
+  "name": "onyx-command-house",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
   "scripts": {
-    "start": "node apps/orni-api/src/index.js",
-    "dev": "node --watch apps/orni-api/src/index.js",
-    "test": "NODE_ENV=test node --test"
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "start": "vite --host 0.0.0.0"
   },
   "dependencies": {
-    "express": "^5.1.0",
-    "helmet": "^8.1.0",
-    "@aws-sdk/client-s3": "^3.900.0",
-    "@aws-sdk/s3-request-presigner": "^3.900.0"
-  }
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {}
 }
