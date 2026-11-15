@@ -47,7 +47,7 @@
  filter:blur(34px) saturate(110%);
  opacity:.82;
  transform:translateZ(0);
- animation:onyxLiquidFlow 24s ease-in-out infinite alternate,onyxSharedHue 36s linear infinite;
+ animation:onyxLiquidFlow 24s ease-in-out infinite alternate,onyxAmbientHue 36s linear infinite;
 }
 .life::after{
  content:"";
@@ -103,3 +103,5 @@
 @media(prefers-reduced-motion:reduce){
  .life::before,.life .life-glow-search{animation:none!important}
 }
+
+@keyframes onyxAmbientHue{0%,100%{filter:blur(34px) saturate(110%) hue-rotate(0deg)}50%{filter:blur(34px) saturate(110%) hue-rotate(34deg)}}@media(max-width:600px){@keyframes onyxAmbientHue{0%,100%{filter:blur(26px) saturate(110%) hue-rotate(0deg)}50%{filter:blur(26px) saturate(110%) hue-rotate(34deg)}}}
