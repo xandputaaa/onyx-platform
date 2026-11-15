@@ -38,7 +38,7 @@ export function createContextState() {
  */
 export function grantAccess(state, { source, domain, capabilities = [] }) {
   if (!source || !CONTEXT_DOMAINS.includes(domain)) throw new Error("Invalid context grant");
-  const allowed = capabilities.filter(capability => ACTION_PERMISSIONS[capability]);
+  const allowed = [...new Set(capabilities.filter(capability => Object.hasOwn(ACTION_PERMISSIONS, capability) && capability.startsWith(domain + ".")))];
   return {
     ...state,
     grants: {
@@ -63,7 +63,7 @@ export function revokeAccess(state, source, domain) {
 export function authorizeAction(state, { source, domain, capability, approved = false }) {
   if (!CONTEXT_DOMAINS.includes(domain)) return { allowed: false, reason: "unknown_domain" };
   const permission = ACTION_PERMISSIONS[capability];
-  if (!permission) return { allowed: false, reason: "unknown_capability" };
+  if (!permission || !capability.startsWith(domain + ".")) return { allowed: false, reason: "unknown_capability" };
   if (!state.grants?.[source]?.[domain]?.includes(capability)) {
     return { allowed: false, reason: "grant_required" };
   }
@@ -89,7 +89,7 @@ export function selectContext(state, requestedDomains = []) {
 }
 
 export function proposeAction(state, { domain, capability, summary }) {
-  if (!CONTEXT_DOMAINS.includes(domain) || !ACTION_PERMISSIONS[capability]) {
+  if (!CONTEXT_DOMAINS.includes(domain) || !ACTION_PERMISSIONS[capability] || !capability.startsWith(domain + ".")) {
     throw new Error("Unsupported action");
   }
   const proposal = {
