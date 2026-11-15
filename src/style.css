@@ -45,3 +45,22 @@ nav button.active{background:linear-gradient(110deg,#f7f9ff,#d6dff4);box-shadow:
 @keyframes onyxBorderFlow{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 @media(max-width:600px){.hero{border-radius:20px;margin-top:10px}.panel,.tile,.system{backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}body::before{filter:blur(48px);opacity:.65}.hero h1{font-size:clamp(36px,10vw,56px)}}
 @media(prefers-reduced-motion:reduce){body::before,.hero::before,.command{animation:none!important}.panel,.tile,.system,nav button{transition:none!important}}
+
+
+/* Reactive core state machine: animation only; no implied microphone or AI backend. */
+.onyx-core-aura{position:absolute;width:min(85%,470px);aspect-ratio:1;border-radius:50%;background:conic-gradient(from 10deg,transparent,rgba(109,124,241,.2),transparent,rgba(245,126,176,.16),transparent);filter:blur(32px);animation:onyxCoreTurn 24s linear infinite;pointer-events:none}
+.onyx-core-pulse{position:absolute;inset:-13%;border:1px solid rgba(174,204,255,.23);border-radius:50%;animation:onyxPulse 4.5s ease-out infinite;pointer-events:none}
+.onyx-core-status{position:absolute;right:22px;top:22px;z-index:4;display:flex;align-items:center;gap:8px;border:1px solid rgba(213,227,255,.17);border-radius:40px;background:rgba(9,11,19,.58);backdrop-filter:blur(14px);padding:9px 13px;font-size:9px;letter-spacing:1.7px;color:#dbe3ff}
+.onyx-core-status-dot{width:6px;height:6px;border-radius:50%;background:#b7d5ff;box-shadow:0 0 12px #93b9ff}
+.onyx-core--listening .onyx-core-aura{background:conic-gradient(transparent,rgba(60,236,216,.4),transparent,rgba(78,176,255,.3),transparent);animation-duration:9s}
+.onyx-core--listening .onyx-core-pulse{border-color:rgba(69,245,217,.58);animation-duration:1.5s}
+.onyx-core--listening .onyx-core-mark{color:#8effe7;text-shadow:0 0 24px #28ebd5}
+.onyx-core--thinking .onyx-core-aura{background:conic-gradient(transparent,rgba(191,92,255,.36),transparent,rgba(105,124,255,.32),transparent);animation-duration:5s}
+.onyx-core--thinking .onyx-core-pulse{animation-duration:1s;border-color:rgba(208,148,255,.55)}
+.onyx-core--responding .onyx-core-aura{background:conic-gradient(transparent,rgba(255,166,97,.37),transparent,rgba(238,111,170,.3),transparent);animation-duration:12s}
+.onyx-core--responding .onyx-core-pulse{border-color:rgba(255,193,132,.6);animation-duration:2.1s}
+.onyx-core--responding .onyx-core-mark{color:#ffe0bd;text-shadow:0 0 20px #ffae74}
+.onyx-core--still .onyx-core-aura,.onyx-core--still .onyx-core-pulse{animation-play-state:paused}
+@keyframes onyxPulse{0%{transform:scale(.86);opacity:0}30%{opacity:.85}100%{transform:scale(1.25);opacity:0}}
+@media(max-width:600px){.onyx-core-status{top:12px;right:12px;padding:7px 9px;font-size:8px}.onyx-core-aura{width:85%}}
+@media(prefers-reduced-motion:reduce){.onyx-core-aura,.onyx-core-pulse{animation:none!important}}
